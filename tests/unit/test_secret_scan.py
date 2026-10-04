@@ -34,6 +34,33 @@ def test_planted_secret_fails_without_echo(tmp_path: Path, content: str) -> None
     assert content not in result.stdout + result.stderr
 
 
+@pytest.mark.parametrize("name", ["API_KEY", "TOKEN", "SECRET", "PASSWORD"])
+@pytest.mark.parametrize("prefix", ["", "SERVICE_"])
+@pytest.mark.parametrize("style", ["{}={}", "export {}='{}'", '  {} = "{}"'])
+def test_credential_assignments_fail_without_echo(
+    tmp_path: Path, name: str, prefix: str, style: str
+) -> None:
+    value = "synthetic-assignment-value"
+    content = style.format(prefix + name, value)
+    result = scan_fixture(tmp_path, "fixture.txt", content)
+    assert result.returncode == 1
+    assert "contents withheld" in result.stdout
+    assert value not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("location", ["index", "worktree"])
+def test_bare_assignment_in_either_tracked_copy(tmp_path: Path, location: str) -> None:
+    value = "synthetic-copy-value"
+    assignment = "API_KEY=" + value
+    scan_fixture(tmp_path, "fixture.txt", assignment if location == "index" else "clean text")
+    (tmp_path / "fixture.txt").write_text(assignment if location == "worktree" else "clean text")
+    result = subprocess.run(
+        [str(SCANNER)], cwd=tmp_path, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 1
+    assert value not in result.stdout + result.stderr
+
+
 @pytest.mark.parametrize(
     "name", [".env", ".env.local", ".codeagent/state", ".autobuild/log", "a.db"]
 )

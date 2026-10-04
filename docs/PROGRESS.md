@@ -79,6 +79,20 @@ incomplete; the final row describes the resulting state on main (decision 0004).
 
 ## Session evidence
 
+- Phase 0 review fix (P0-F2): delivered through
+  [PR #5](https://github.com/smadduri9/codeagent/pull/5) on
+  `fix/p0-f2-bare-secret-assignments`; accepts the medium finding in
+  `phase-0-review-0-20261004-130245.md`. Make the credential-name prefix optional
+  so bare API_KEY, TOKEN, SECRET, and PASSWORD assignments are detected.
+  Regression tests cover bare/prefixed names, plain/exported/quoted assignments,
+  both index and worktree copies, and withholding synthetic values from output.
+  Before the fix, 14 new cases failed and 12 prefixed cases passed.
+  After the fix, all 81 tests, Ruff lint/format, strict mypy, and the secret scan
+  pass locally. Until PR #5 passes both CI checks and merges, this fix remains
+  in-review; its merged state on GitHub confirms completion (decision 0004).
+  The published `phase-0` tag is retained as the original reviewed snapshot.
+  The review's low-severity configuration-test finding is outside this requested
+  high/medium fix round; it is not rejected. No live tests are needed.
 - P0-F1: PR #1 already merged; bootstrap exception recorded in decision 0001.
 - P0-F2: PR #2 passed both CI checks (run 37187219038); post-merge
   scripts/check.sh passed with 15 tests. Secret scan passed. No live tests.

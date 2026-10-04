@@ -8,7 +8,7 @@ PATTERNS = (
     rb"gsk" + rb"_[A-Za-z0-9]{20,}",
     rb"sk" + rb"-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}",
     rb"-----BEGIN " + rb"(?:[A-Z0-9]+ )*PRIVATE KEY-----",
-    rb"(?im)^\s*(?:export\s+)?[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN|SECRET|PASSWORD)"
+    rb"(?im)^\s*(?:export\s+)?(?:[A-Z][A-Z0-9_]*)?(?:API_KEY|TOKEN|SECRET|PASSWORD)"
     rb"\s*=\s*[\"']?[^\s\"']{8,}",
 )
 
