@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codeagent"
+version = "0.1.0"
+description = "A local CLI coding agent with deterministic permissions and verification"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["typer>=0.15,<1", "rich>=13.9,<15"]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.11,<1", "mypy>=1.15,<2", "pytest>=8.3,<10"]
+
+[project.scripts]
+codeagent = "codeagent.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codeagent"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+include = ["*.py", "*.pyi", "*.ipynb", "pyproject.toml"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = ["live: optional real-provider checks, excluded from the default check script"]
