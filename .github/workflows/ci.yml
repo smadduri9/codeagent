@@ -1,0 +1,25 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ripgrep
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install ripgrep; else sudo apt-get update && sudo apt-get install -y ripgrep; fi
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Check
+        run: scripts/check.sh
+      - name: Secret scan
+        run: scripts/scan_secrets.sh
