@@ -11,6 +11,26 @@ PATTERNS = (
     rb"(?im)^\s*(?:export\s+)?(?:[A-Z][A-Z0-9_]*)?(?:API_KEY|TOKEN|SECRET|PASSWORD)"
     rb"\s*=\s*[\"']?[^\s\"']{8,}",
 )
+EXAMPLE_PLACEHOLDERS = {b"your_groq_key_here", b"your-key-here"}
+
+
+def is_example_placeholder(line: bytes) -> bool:
+    """Allow only complete known values, optionally wrapped in matching quotes."""
+    value = line.partition(b"=")[2].strip()
+    if len(value) >= 2 and value[:1] in {b"'", b'"'} and value[-1:] == value[:1]:
+        value = value[1:-1]
+    return value in EXAMPLE_PLACEHOLDERS
+
+
+def contains_secret(data: bytes, *, example: bool) -> bool:
+    """Apply key patterns to all content and narrowly exempt example values."""
+    if any(re.search(pattern, data) for pattern in PATTERNS[:-1]):
+        return True
+    if example:
+        data = b"\n".join(
+            b"" if is_example_placeholder(line) else line for line in data.split(b"\n")
+        )
+    return re.search(PATTERNS[-1], data) is not None
 
 
 def forbidden(path: Path) -> bool:
@@ -39,10 +59,7 @@ def main() -> int:
         contents = [staged]
         if path.is_file() and not path.is_symlink():
             contents.append(path.read_bytes())
-        # The owner-supplied example intentionally contains placeholder assignments.
-        # Actual provider-key patterns and private-key headers still apply there.
-        patterns = PATTERNS[:-1] if relative.name == ".env.example" else PATTERNS
-        if any(re.search(pattern, data) for data in contents for pattern in patterns):
+        if any(contains_secret(data, example=relative.name == ".env.example") for data in contents):
             print(f"Potential secret in tracked file: {str(relative)!r}")
             failures += 1
     if failures:
