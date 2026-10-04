@@ -9,6 +9,13 @@ from pydantic import BaseModel, ValidationError
 from codeagent.config import ToolSettings
 from codeagent.providers.base import ToolCall
 from codeagent.tools.base import RiskLevel, StrictArgs, ToolResult, ToolSpec
+from codeagent.tools.command_tools import (
+    BashArgs,
+    CommandToolContext,
+    RunCommandArgs,
+    handle_bash,
+    handle_run_command,
+)
 from codeagent.tools.file_tools import (
     DeletePathArgs,
     EditFileArgs,
@@ -27,6 +34,17 @@ from codeagent.tools.file_tools import (
     handle_move_path,
     handle_read_file,
     handle_write_file,
+)
+from codeagent.tools.git_tools import (
+    GitDiffArgs,
+    GitLogArgs,
+    GitShowArgs,
+    GitStatusArgs,
+    GitToolContext,
+    handle_git_diff,
+    handle_git_log,
+    handle_git_show,
+    handle_git_status,
 )
 from codeagent.tools.workspace_context import WorkspaceToolContext
 
@@ -215,6 +233,98 @@ class ToolRegistry:
             risk_level="DESTRUCTIVE",
         )
         return ctx
+
+    def register_command_tools(
+        self,
+        workspace: Path,
+        settings: ToolSettings | None = None,
+        *,
+        context: CommandToolContext | None = None,
+    ) -> CommandToolContext:
+        """Register ``run_command`` and ``bash`` bound to ``workspace``."""
+        ws = Path(workspace)
+        ctx = context or CommandToolContext(
+            workspace=ws,
+            settings=settings or ToolSettings(),
+        )
+        self.register(
+            "run_command",
+            (
+                "Run a command without a shell (argv array). "
+                "No glob expansion or variable interpolation."
+            ),
+            RunCommandArgs,
+            _bind_command(ctx, handle_run_command),
+            risk_level="EXTERNAL_SIDE_EFFECT",
+        )
+        self.register(
+            "bash",
+            "Run a shell command string (classified by the permission engine).",
+            BashArgs,
+            _bind_command(ctx, handle_bash),
+            risk_level="EXTERNAL_SIDE_EFFECT",
+        )
+        return ctx
+
+    def register_git_tools(
+        self,
+        repo: Path,
+        settings: ToolSettings | None = None,
+        *,
+        context: GitToolContext | None = None,
+    ) -> GitToolContext:
+        """Register read-only git tools for ``repo``."""
+        root = Path(repo)
+        ctx = context or GitToolContext(repo=root, settings=settings or ToolSettings())
+        self.register(
+            "git_status",
+            "Git status (short, with branch).",
+            GitStatusArgs,
+            _bind_git(ctx, handle_git_status),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "git_diff",
+            "Git diff for the working tree or staged changes.",
+            GitDiffArgs,
+            _bind_git(ctx, handle_git_diff),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "git_log",
+            "Recent commits (oneline).",
+            GitLogArgs,
+            _bind_git(ctx, handle_git_log),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "git_show",
+            "Show a commit (stat and patch).",
+            GitShowArgs,
+            _bind_git(ctx, handle_git_show),
+            risk_level="READ_ONLY",
+        )
+        return ctx
+
+
+def _bind_command[ArgModel: BaseModel](
+    ctx: CommandToolContext,
+    handler: Callable[[CommandToolContext, ArgModel], ToolResult],
+) -> Callable[[ArgModel], ToolResult]:
+    def wrapped(args: ArgModel) -> ToolResult:
+        return handler(ctx, args)
+
+    return wrapped
+
+
+def _bind_git[ArgModel: BaseModel](
+    ctx: GitToolContext,
+    handler: Callable[[GitToolContext, ArgModel], ToolResult],
+) -> Callable[[ArgModel], ToolResult]:
+    def wrapped(args: ArgModel) -> ToolResult:
+        return handler(ctx, args)
+
+    return wrapped
 
 
 def _model_json_schema(model: type[BaseModel]) -> dict[str, Any]:
