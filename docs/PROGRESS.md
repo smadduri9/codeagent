@@ -1,8 +1,7 @@
 # Build progress
 
-Phase 0 is complete on merged main at the published `phase-0` tag. Later phases
-remain unstarted. Until PR #4 merges and the tag is published, Phase 0 remains
-incomplete; the final row describes the resulting state on main (decision 0004).
+Phase 0 is complete on merged main at the published `phase-0` tag. Phase 1 is
+in progress (P1-F1 merged). Later phases remain unstarted.
 
 | ID | Title | Branch | Status | PR | Merge commit |
 |---|---|---|---|---|---|
@@ -10,7 +9,7 @@ incomplete; the final row describes the resulting state on main (decision 0004).
 | P0-F2 | CI, pull request template, secret scan | `chore/p0-f2-ci-and-templates` | merged | [#2](https://github.com/smadduri9/codeagent/pull/2) | `03d1c778ed85e8adfe397ab9f4c3abc855ebd5f4` |
 | P0-F3 | Progress file and decision records | `docs/p0-f3-progress-and-decisions` | merged | [#3](https://github.com/smadduri9/codeagent/pull/3) | `44c728ab8e3374d0d75ef16540a7a5fef5166b7d` |
 | P0-F4 | Layered configuration | `feat/p0-f4-config-loader` | merged | [#4](https://github.com/smadduri9/codeagent/pull/4) | `phase-0^{commit}` (PR #4 merge) |
-| P1-F1 | Message, tool-call, and usage types | `feat/p1-f1-core-types` | todo | — | — |
+| P1-F1 | Message, tool-call, and usage types | `feat/p1-f1-core-types` | merged | [#7](https://github.com/smadduri9/codeagent/pull/7) | `18fc84d` |
 | P1-F2 | Provider protocol and FakeProvider | `feat/p1-f2-fake-provider` | todo | — | — |
 | P1-F3 | Tool registry | `feat/p1-f3-tool-registry` | todo | — | — |
 | P1-F4 | Run lifecycle | `feat/p1-f4-run-lifecycle` | todo | — | — |
@@ -79,6 +78,9 @@ incomplete; the final row describes the resulting state on main (decision 0004).
 
 ## Session evidence
 
+- P1-F1: PR #7 merged at `18fc84d`; 171 offline tests, Ruff, strict mypy, and
+  secret scan pass locally and on CI (run 37234880322). Round-trip JSON tests
+  in `tests/unit/test_core_types.py`. No live tests. No new dependencies.
 - Phase 0 review fix (P0-F2), round 1: accepts the sole medium finding in
   `phase-0-review-1-20261004-131051.md`; no high findings or rejections.
   [PR #6](https://github.com/smadduri9/codeagent/pull/6), branch
