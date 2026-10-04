@@ -79,6 +79,23 @@ incomplete; the final row describes the resulting state on main (decision 0004).
 
 ## Session evidence
 
+- Phase 0 review fix (P0-F2), round 1: accepts the sole medium finding in
+  `phase-0-review-1-20261004-131051.md`; no high findings or rejections.
+  [PR #6](https://github.com/smadduri9/codeagent/pull/6), branch
+  `fix/p0-f2-example-placeholder-scan`, is in-review until both CI checks pass
+  and it merges. The merged PR is the completion reference (decision 0004).
+  Decision 0005 restricts example-file exemptions to complete known placeholders,
+  preserving provider-key and private-key checks on all original content.
+  Added 79 regression cases; 65 detection cases failed before the fix.
+  Root/nested examples, staged/worktree copies, mixed placeholder/credential
+  lines, assignment styles, exact values, and diagnostic withholding are covered.
+  Local `scripts/check.sh` passes: 160 tests, Ruff lint/format, strict mypy;
+  `scripts/scan_secrets.sh` and `git diff --check` also pass. Both CI checks
+  must pass on the final documentation commit before merge; main is checked
+  again afterward. No live tests required or run, no dependencies added.
+  The low-severity configuration error-redaction test finding remains outside
+  this requested high/medium fix round; it is not rejected. The original
+  `phase-0` tag is retained.
 - Phase 0 review fix (P0-F2): delivered through
   [PR #5](https://github.com/smadduri9/codeagent/pull/5) on
   `fix/p0-f2-bare-secret-assignments`; accepts the medium finding in
@@ -88,8 +105,8 @@ incomplete; the final row describes the resulting state on main (decision 0004).
   both index and worktree copies, and withholding synthetic values from output.
   Before the fix, 14 new cases failed and 12 prefixed cases passed.
   After the fix, all 81 tests, Ruff lint/format, strict mypy, and the secret scan
-  pass locally. Until PR #5 passes both CI checks and merges, this fix remains
-  in-review; its merged state on GitHub confirms completion (decision 0004).
+  pass locally. PR #5 is confirmed merged at
+  `58a31400fe9b907eb2e79300aecb96a28cb2b908`.
   The published `phase-0` tag is retained as the original reviewed snapshot.
   The review's low-severity configuration-test finding is outside this requested
   high/medium fix round; it is not rejected. No live tests are needed.

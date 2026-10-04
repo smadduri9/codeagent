@@ -85,3 +85,52 @@ def test_index_secret_cannot_be_hidden_by_worktree(tmp_path: Path) -> None:
 def test_example_allows_placeholder_but_rejects_key(tmp_path: Path) -> None:
     assert scan_fixture(tmp_path, ".env.example", "GROQ_API_KEY=your-key-here").returncode == 0
     assert scan_fixture(tmp_path, ".env.example", "gsk" + "_" + "x" * 40).returncode == 1
+
+
+@pytest.mark.parametrize("path", [".env.example", "nested/.env.example"])
+@pytest.mark.parametrize("location", ["index", "worktree"])
+@pytest.mark.parametrize("name", ["API_KEY", "TOKEN", "SECRET", "PASSWORD", "GROQ_API_KEY"])
+@pytest.mark.parametrize("style", ["{}={}", "export {}='{}'", '  {} = "{}"'])
+def test_example_assignments_in_either_tracked_copy(
+    tmp_path: Path, path: str, location: str, name: str, style: str
+) -> None:
+    value = "synthetic-example-credential"
+    clean = "GROQ_API_KEY=" + "your_groq_key_here\n"
+    content = clean + style.format(name, value) + "\n" + clean
+    scan_fixture(tmp_path, path, content if location == "index" else clean)
+    (tmp_path / path).write_text(content if location == "worktree" else clean)
+    result = subprocess.run(
+        [str(SCANNER)], cwd=tmp_path, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 1
+    assert "contents withheld" in result.stdout
+    assert value not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("path", [".env.example", "nested/.env.example"])
+@pytest.mark.parametrize("value", ["your_groq_key_here", "your-key-here"])
+@pytest.mark.parametrize("quote", ["", "'", '"'])
+def test_example_known_placeholders(tmp_path: Path, path: str, value: str, quote: str) -> None:
+    content = "# Example configuration\nexport GROQ_API_KEY = " + quote + value + quote + "\n"
+    assert scan_fixture(tmp_path, path, content).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "your_groq_key_here-synthetic-suffix",
+        "synthetic-prefix-your-key-here",
+        "your_groq_key_here synthetic-trailing-value",
+        "'your-key-here' synthetic-trailing-value",
+        "'your-key-here\"",
+    ],
+)
+def test_example_placeholder_must_be_entire_value(tmp_path: Path, value: str) -> None:
+    result = scan_fixture(tmp_path, ".env.example", "API_KEY=" + value)
+    assert result.returncode == 1
+    assert value not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("value", ["your_groq_key_here", "your-key-here"])
+def test_placeholder_exemption_is_only_for_examples(tmp_path: Path, value: str) -> None:
+    assert scan_fixture(tmp_path, "fixture.txt", "API_KEY=" + value).returncode == 1
