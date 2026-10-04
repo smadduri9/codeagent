@@ -9,12 +9,10 @@ owner. P0-F1 also precedes P0-F2, which introduces required CI checks.
 
 ## Decision
 
-Implement and verify P0-F1 locally. Automatic approval review rejected the
-initial push because it requires explicit owner permission to publish the new
-code to GitHub. No push or PR was performed. Keep the verified feature branch
-local until permission is granted; do not merge or claim the phase is complete.
-Phase labels and `blocked` must also be created by the owner or explicitly
-authorized. After both prerequisites, publish and resume P0-F1. Local checks are
+Implement and verify P0-F1 locally. The owner explicitly authorized creating
+the missing labels, pushing feature branches, and opening/merging verified
+feature PRs to smadduri9/codeagent on 2026-10-04. This resolves the initial
+publication approval block and authorizes label setup for this build. Local checks are
 the bootstrap evidence because CI does not exist until P0-F2; the next session
 must explicitly record that bootstrap exception before merging.
 
