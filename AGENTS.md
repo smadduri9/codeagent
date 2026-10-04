@@ -10,9 +10,14 @@ Repository: https://github.com/smadduri9/codeagent. Model provider for the produ
 
 (`auto`: after CI passes, merge your own pull request. `manual`: stop at an open pull request and wait for the owner to merge. The owner edits this word. Unattended builds need `auto`.)
 
-## Operating mode
+## Operating modes
 
-Builds normally run unattended through `scripts/autobuild.sh`. Nobody is there to answer. Never wait for input and never ask a question. Decide, record the decision, continue. When you cannot continue, follow "If stuck" below and end the session.
+The build is tool-agnostic: it is fully specified by `DESIGN.md`, `BUILD_PLAN.md`, and this file, and all state lives in git plus `docs/PROGRESS.md`, so any agent — the Cursor UI or CLI, Codex, or Claude Code — can run it. `docs/RUNBOOK.md` is the operator guide and the single source of the per-phase, review, and fix prompts. The CLI drivers (`scripts/autobuild.sh`, `.autobuild/`) are one optional way to run those prompts unattended, not a requirement.
+
+- **Unattended** (a driver runs with nobody present): never wait for input and never ask a question. Decide, record the decision in `docs/decisions/`, continue. When you cannot continue, follow "If stuck" below and end the session.
+- **Interactive / UI** (the owner is present in a chat): you may ask the owner a question when a choice is genuinely theirs; otherwise behave exactly as unattended. Still never weaken a test, push to `main`, or touch secrets.
+
+Every mode and tool obeys the same working, git, and "Never do these" rules below. Tools without the Cursor deny-list (`.cursor/cli.json`) — Codex, Claude Code — must self-enforce them.
 
 ## Stack and commands
 
