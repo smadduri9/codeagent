@@ -6,8 +6,8 @@ Phase 0 is in progress. Later phases remain unstarted.
 |---|---|---|---|---|---|
 | P0-F1 | Project skeleton and tooling | `chore/p0-f1-project-skeleton` | merged | [#1](https://github.com/smadduri9/codeagent/pull/1) | `1d27bab86644a332b6c82cc5a6f7a5f6e08b0a3c` |
 | P0-F2 | CI, pull request template, secret scan | `chore/p0-f2-ci-and-templates` | merged | [#2](https://github.com/smadduri9/codeagent/pull/2) | `03d1c778ed85e8adfe397ab9f4c3abc855ebd5f4` |
-| P0-F3 | Progress file and decision records | `docs/p0-f3-progress-and-decisions` | in-review | [#3](https://github.com/smadduri9/codeagent/pull/3) | — |
-| P0-F4 | Layered configuration | `feat/p0-f4-config-loader` | todo | — | — |
+| P0-F3 | Progress file and decision records | `docs/p0-f3-progress-and-decisions` | merged | [#3](https://github.com/smadduri9/codeagent/pull/3) | `44c728ab8e3374d0d75ef16540a7a5fef5166b7d` |
+| P0-F4 | Layered configuration | `feat/p0-f4-config-loader` | in-progress | — | — |
 | P1-F1 | Message, tool-call, and usage types | `feat/p1-f1-core-types` | todo | — | — |
 | P1-F2 | Provider protocol and FakeProvider | `feat/p1-f2-fake-provider` | todo | — | — |
 | P1-F3 | Tool registry | `feat/p1-f3-tool-registry` | todo | — | — |
@@ -81,3 +81,5 @@ Phase 0 is in progress. Later phases remain unstarted.
 - P0-F2: PR #2 passed both CI checks (run 37187219038); post-merge
   scripts/check.sh passed with 15 tests. Secret scan passed. No live tests.
 - Owner follow-up: configure required CI checks per BUILD_PLAN section 2.
+- P0-F3: PR #3 passed both CI checks (run 37187391537); post-merge checks
+  passed with 16 tests. The PR records the intermediate commit-order deviation.
