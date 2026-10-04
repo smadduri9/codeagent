@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.codeagent/
+.autobuild/
+.DS_Store
+__pycache__/
+.venv/
+*.db
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

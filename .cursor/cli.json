@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(git)", "Shell(gh)", "Shell(python)", "Shell(python3)", "Shell(pip)",
+      "Shell(pytest)", "Shell(ruff)", "Shell(mypy)", "Shell(rg)", "Shell(ls)",
+      "Shell(mkdir)", "Shell(chmod)", "Shell(bash:scripts/check.sh*)", "Shell(scripts/check.sh)",
+      "Read(**)",
+      "Write(src/**)", "Write(tests/**)", "Write(evals/**)", "Write(examples/**)",
+      "Write(prompts/**)", "Write(docs/**)", "Write(scripts/**)", "Write(.github/**)",
+      "Write(pyproject.toml)", "Write(README.md)", "Write(.gitignore)",
+      "WebFetch(docs.python.org)", "WebFetch(pypi.org)", "WebFetch(console.groq.com)", "WebFetch(github.com)"
+    ],
+    "deny": [
+      "Shell(sudo)", "Shell(rm)", "Shell(dd)", "Shell(mkfs)", "Shell(curl)", "Shell(wget)",
+      "Shell(ssh)", "Shell(scp)", "Shell(nc)", "Shell(env)", "Shell(printenv)",
+      "Shell(cat:*.env*)", "Shell(less:*.env*)", "Shell(head:*.env*)", "Shell(tail:*.env*)",
+      "Shell(grep:*.env*)", "Shell(rg:*.env*)", "Shell(source:*.env*)",
+      "Shell(git:push --force*)", "Shell(git:push -f*)", "Shell(git:push --force-with-lease*)",
+      "Shell(git:push origin main*)", "Shell(git:push origin HEAD:main*)",
+      "Shell(git:push --set-upstream origin main*)", "Shell(git:rebase*)",
+      "Shell(git:filter-branch*)", "Shell(git:reset --hard*)", "Shell(git:clean*)",
+      "Shell(gh:auth*)", "Shell(gh:repo*)", "Shell(gh:api*)", "Shell(gh:secret*)",
+      "Shell(gh:label*)", "Shell(gh:workflow*)", "Shell(gh:release*)", "Shell(gh:pr merge --admin*)",
+      "Read(.env)", "Read(**/.env)", "Read(.env.local)", "Read(**/.ssh/**)",
+      "Write(.env)", "Write(**/.env)", "Write(AGENTS.md)", "Write(DESIGN.md)", "Write(BUILD_PLAN.md)",
+      "Write(.cursor/**)", "Write(.cursorignore)", "Write(.env.example)", "Write(scripts/autobuild.sh)",
+      "Write(**/*.pem)", "Write(**/*.key)"
+    ]
+  }
+}
