@@ -743,6 +743,8 @@ At a phase boundary: tag, update `PROGRESS.md`, and write the phase report (3.8)
 
 ### 6.5 Driver and prompts
 
+The build is tool-agnostic. The prompts below are the contract; any agent — the Cursor UI, the Cursor CLI, Codex, or Claude Code — can execute them against `git` and `gh`. The CLI driver is one convenience for running them unattended, not a dependency. `docs/RUNBOOK.md` holds the operator guide and the copy-paste form of these prompts for interactive (UI) use, plus how to switch tools without losing state.
+
 `scripts/autobuild.sh` loops over phases 0 to `MAX_PHASE` (default 8). A phase is complete when the tag `phase-N` exists on `origin`. For each incomplete phase it runs up to `MAX_SESSIONS_PER_PHASE` sessions (default 6). Between sessions and phases it halts when:
 
 - an open pull request carries the `blocked` label;
