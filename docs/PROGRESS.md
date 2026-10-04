@@ -10,7 +10,7 @@ in progress (P1-F1 merged). Later phases remain unstarted.
 | P0-F3 | Progress file and decision records | `docs/p0-f3-progress-and-decisions` | merged | [#3](https://github.com/smadduri9/codeagent/pull/3) | `44c728ab8e3374d0d75ef16540a7a5fef5166b7d` |
 | P0-F4 | Layered configuration | `feat/p0-f4-config-loader` | merged | [#4](https://github.com/smadduri9/codeagent/pull/4) | `phase-0^{commit}` (PR #4 merge) |
 | P1-F1 | Message, tool-call, and usage types | `feat/p1-f1-core-types` | merged | [#7](https://github.com/smadduri9/codeagent/pull/7) | `18fc84d` |
-| P1-F2 | Provider protocol and FakeProvider | `feat/p1-f2-fake-provider` | todo | — | — |
+| P1-F2 | Provider protocol and FakeProvider | `feat/p1-f2-fake-provider` | merged | [#10](https://github.com/smadduri9/codeagent/pull/10) | `ee0b0df` |
 | P1-F3 | Tool registry | `feat/p1-f3-tool-registry` | todo | — | — |
 | P1-F4 | Run lifecycle | `feat/p1-f4-run-lifecycle` | todo | — | — |
 | P1-F5 | Agent loop with iteration guard | `feat/p1-f5-agent-loop` | todo | — | — |
@@ -78,6 +78,9 @@ in progress (P1-F1 merged). Later phases remain unstarted.
 
 ## Session evidence
 
+- P1-F2: PR #10 merged at `ee0b0df`; three-turn `FakeProvider` replay test and 175
+  offline tests pass locally and on CI (run 37236273405). No live tests. No new
+  dependencies.
 - P1-F1: PR #7 merged at `18fc84d`; 171 offline tests, Ruff, strict mypy, and
   secret scan pass locally and on CI (run 37234880322). Round-trip JSON tests
   in `tests/unit/test_core_types.py`. No live tests. No new dependencies.
