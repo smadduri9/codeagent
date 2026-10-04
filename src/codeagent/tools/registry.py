@@ -1,12 +1,34 @@
 """Tool registration, schema validation, and dispatch."""
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ValidationError
 
+from codeagent.config import ToolSettings
 from codeagent.providers.base import ToolCall
-from codeagent.tools.base import ToolResult, ToolSpec
+from codeagent.tools.base import RiskLevel, StrictArgs, ToolResult, ToolSpec
+from codeagent.tools.file_tools import (
+    DeletePathArgs,
+    EditFileArgs,
+    GlobArgs,
+    GrepArgs,
+    ListDirArgs,
+    MovePathArgs,
+    ReadFileArgs,
+    WriteFileArgs,
+    _bind,
+    handle_delete_path,
+    handle_edit_file,
+    handle_glob,
+    handle_grep,
+    handle_list_dir,
+    handle_move_path,
+    handle_read_file,
+    handle_write_file,
+)
+from codeagent.tools.workspace_context import WorkspaceToolContext
 
 
 class ToolValidationError(Exception):
@@ -23,10 +45,6 @@ class UnknownToolError(Exception):
     def __init__(self, name: str) -> None:
         super().__init__(f"unknown tool: {name}")
         self.name = name
-
-
-class StrictArgs(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class _EchoArgs(StrictArgs):
@@ -54,9 +72,15 @@ class ToolRegistry:
         handler: Callable[[Any], ToolResult],
         *,
         parameters: dict[str, object] | None = None,
+        risk_level: RiskLevel | None = None,
     ) -> None:
         schema = parameters if parameters is not None else _model_json_schema(args_model)
-        self._specs[name] = ToolSpec(name=name, description=description, parameters=schema)
+        self._specs[name] = ToolSpec(
+            name=name,
+            description=description,
+            parameters=schema,
+            risk_level=risk_level,
+        )
         self._models[name] = args_model
         self._handlers[name] = handler
 
@@ -107,6 +131,90 @@ class ToolRegistry:
             content=message,
             truncated=False,
         )
+
+    def register_filesystem_tools(
+        self,
+        workspace: Path,
+        settings: ToolSettings | None = None,
+        *,
+        context: WorkspaceToolContext | None = None,
+    ) -> WorkspaceToolContext:
+        """Register read, search, and mutation tools bound to ``workspace``."""
+        ws = Path(workspace)
+        ctx = context or WorkspaceToolContext(
+            workspace=ws,
+            settings=settings or ToolSettings(),
+        )
+        self.register(
+            "read_file",
+            (
+                "Read a text file inside the workspace with line numbers. "
+                "Do not use bash or cat for reading. "
+                "Use offset and limit for large files."
+            ),
+            ReadFileArgs,
+            _bind(ctx, handle_read_file),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "list_dir",
+            (
+                "List one directory (non-recursive). Respects .gitignore. "
+                "Do not use ls for workspace inspection."
+            ),
+            ListDirArgs,
+            _bind(ctx, handle_list_dir),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "glob",
+            "Find files by glob pattern; respects .gitignore. Sorted by modification time.",
+            GlobArgs,
+            _bind(ctx, handle_glob),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "grep",
+            (
+                "Search file contents with ripgrep (files, lines, or count). "
+                "Do not use bash grep for code search."
+            ),
+            GrepArgs,
+            _bind(ctx, handle_grep),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "write_file",
+            "Create a new file only; fails if the path already exists. Creates parent directories.",
+            WriteFileArgs,
+            _bind(ctx, handle_write_file),
+            risk_level="LOCAL_MUTATION",
+        )
+        self.register(
+            "edit_file",
+            (
+                "Replace exact old_string with new_string in a file that was read earlier. "
+                "Fails on missing or ambiguous matches."
+            ),
+            EditFileArgs,
+            _bind(ctx, handle_edit_file),
+            risk_level="LOCAL_MUTATION",
+        )
+        self.register(
+            "move_path",
+            "Move or rename a path inside the workspace.",
+            MovePathArgs,
+            _bind(ctx, handle_move_path),
+            risk_level="LOCAL_MUTATION",
+        )
+        self.register(
+            "delete_path",
+            "Delete a file or directory inside the workspace. Always requires approval.",
+            DeletePathArgs,
+            _bind(ctx, handle_delete_path),
+            risk_level="DESTRUCTIVE",
+        )
+        return ctx
 
 
 def _model_json_schema(model: type[BaseModel]) -> dict[str, Any]:
