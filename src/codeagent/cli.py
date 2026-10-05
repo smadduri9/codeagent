@@ -2,6 +2,7 @@
 
 import typer
 
+from codeagent.cli_rollback import rollback_command
 from codeagent.cli_run import run_command
 
 app = typer.Typer(
@@ -17,6 +18,7 @@ def main() -> None:
 
 
 app.command("run")(run_command)
+app.command("rollback")(rollback_command)
 
 
 if __name__ == "__main__":
