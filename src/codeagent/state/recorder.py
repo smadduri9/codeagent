@@ -106,7 +106,22 @@ class RunRecorder:
             rel = path.as_posix()
         self.store.record_file_read(self.run_id, Path(rel), content_hash(content))
 
-    def finish(self, phase: RunPhase, stop_reason: str | None) -> None:
+    def finish(
+        self,
+        phase: RunPhase,
+        stop_reason: str | None,
+        *,
+        resumable: bool = False,
+    ) -> None:
+        if resumable:
+            persist_phase = RunPhase.WORKING if phase is RunPhase.STOPPED else phase
+            self.store.finish_run(
+                self.run_id,
+                phase=persist_phase,
+                stop_reason=stop_reason,
+                status="stopped",
+            )
+            return
         status = "active" if phase is RunPhase.WORKING else "finished"
         if phase in {RunPhase.STOPPED, RunPhase.FAILED, RunPhase.CANCELLED}:
             status = "stopped"
