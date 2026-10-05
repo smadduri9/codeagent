@@ -111,6 +111,21 @@ codeagent trace <run_id>
 codeagent status <run_id>
 ```
 
+If `codeagent run --persist` fails with **another run is active** but no agent is
+running, the lock file may be stale (for example after a crash). Check that no
+`codeagent` process is using the repo, then:
+
+```bash
+codeagent runs unlock
+```
+
+Use `codeagent runs unlock --force` only when you are certain no run is in progress.
+To clear a run left **active** in SQLite after a failed start:
+
+```bash
+codeagent runs cancel <run_id>
+```
+
 ## Roll back checkpoints
 
 ```bash
