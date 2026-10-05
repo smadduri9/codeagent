@@ -104,6 +104,7 @@ def test_handle_run_command_respects_docker_mode(tmp_path: Path) -> None:
     assert mocked.call_args.kwargs["isolation_mode"] == "docker"
 
 
+@pytest.mark.live
 @pytest.mark.skipif(not docker_cli_available(), reason="docker daemon not available")
 def test_live_docker_echo() -> None:
     import tempfile
