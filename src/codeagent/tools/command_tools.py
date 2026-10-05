@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from pydantic import Field
 
 from codeagent.config import ToolSettings
+from codeagent.isolation.docker import execute_argv
 from codeagent.tools.base import StrictArgs, ToolResult
-from codeagent.tools.command_exec import DEFAULT_TIMEOUT_S, run_argv
+from codeagent.tools.command_exec import DEFAULT_TIMEOUT_S
 from codeagent.tools.paths import WorkspacePathError, resolve_workspace_path
 
 
@@ -29,6 +31,8 @@ class BashArgs(StrictArgs):
 class CommandToolContext:
     workspace: Path
     settings: ToolSettings
+    isolation_mode: str = "worktree"
+    warn: Callable[[str], None] | None = field(default=None, repr=False)
 
 
 def _resolve_cwd(ctx: CommandToolContext, cwd: str | None) -> Path:
@@ -49,12 +53,14 @@ def handle_run_command(ctx: CommandToolContext, args: RunCommandArgs) -> ToolRes
         run_cwd = _resolve_cwd(ctx, args.cwd)
     except WorkspacePathError as exc:
         return ToolResult(ok=False, summary="run_command failed", content=str(exc), truncated=False)
-    result = run_argv(
+    result = execute_argv(
         [str(part) for part in args.argv],
         cwd=run_cwd,
         timeout_s=args.timeout_s,
         env=args.env,
         max_output_chars=ctx.settings.max_output_chars,
+        isolation_mode=ctx.isolation_mode,
+        warn=ctx.warn,
     )
     summary = "run_command"
     if result.timed_out:
@@ -80,12 +86,14 @@ def handle_bash(ctx: CommandToolContext, args: BashArgs) -> ToolResult:
             content="command must not be empty",
             truncated=False,
         )
-    result = run_argv(
+    result = execute_argv(
         ["/bin/bash", "-lc", command],
         cwd=ctx.workspace,
         timeout_s=args.timeout_s,
         env=None,
         max_output_chars=ctx.settings.max_output_chars,
+        isolation_mode=ctx.isolation_mode,
+        warn=ctx.warn,
     )
     summary = "bash"
     if result.timed_out:
