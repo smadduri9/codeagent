@@ -1,5 +1,7 @@
 # Documentation index
 
+Public project site (GitHub Pages): [index.html](index.html) at https://smadduri9.github.io/codeagent/
+
 | Document | Description |
 |----------|-------------|
 | [OPERATOR.md](OPERATOR.md) | Run CodeAgent on your repositories (Groq setup, config, commands) |
