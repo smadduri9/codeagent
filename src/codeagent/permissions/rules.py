@@ -133,17 +133,17 @@ def extract_redirect_paths(segment: str) -> list[str]:
     tokens = re.split(r"\s+", segment.strip())
     i = 0
     while i < len(tokens):
-        token = tokens[i]
-        if token in {">", ">>", "1>", "2>", "1>>", "2>>"} and i + 1 < len(tokens):
+        piece = tokens[i]
+        if piece in {">", ">>", "1>", "2>", "1>>", "2>>"} and i + 1 < len(tokens):
             paths.append(tokens[i + 1].strip("'\"`"))
             i += 2
             continue
-        if re.match(r"^\d+>>?$", token) and i + 1 < len(tokens):
+        if re.match(r"^\d+>>?$", piece) and i + 1 < len(tokens):
             paths.append(tokens[i + 1].strip("'\"`"))
             i += 2
             continue
-        if token.startswith(">") and len(token) > 1:
-            paths.append(token[1:].strip("'\"`"))
+        if piece.startswith(">") and len(piece) > 1:
+            paths.append(piece[1:].strip("'\"`"))
         i += 1
     return paths
 
