@@ -79,6 +79,7 @@ skipped (no eval evidence). See decision records 0007, 0008, and 0009.
 
 ## Session evidence
 
+- CLI chat + streaming: branch `feat/cli-chat-streaming` — default `codeagent` / `codeagent chat` REPL, streamed run output, final answer block; `scripts/check.sh` green.
 - Groq free-tier stack: PR #28 — `cheap`/`main`/`fallbacks` docs, `resolve_run_model`, k8s-hpa-benchmark example config.
 - P8-F5–F7: PR #19; 40-task fixtures, `core12` slice, replay validation tests; 407+ tests green.
 - P8-F8: payment fixture on `main` at `4b22201`; `tests/unit/test_payment_demo.py`.

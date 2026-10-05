@@ -9,6 +9,7 @@ import typer
 from pydantic import TypeAdapter
 from rich.console import Console
 
+from codeagent.cli_output import CliRunOutputRenderer
 from codeagent.config import ConfigError, find_git_root, load_settings
 from codeagent.loop.interrupt import InterruptController, install_sigint_handler
 from codeagent.providers.base import ModelEvent
@@ -80,6 +81,7 @@ def resume_command(
         )
         system = build_system_prompt(repo_root, settings)
         iterations = max_iterations or settings.limits.max_iterations
+        renderer = CliRunOutputRenderer(console=console)
         result = run_with_persistence(
             run.goal,
             provider,
@@ -92,10 +94,12 @@ def resume_command(
             system=system,
             max_output_tokens=settings.request.max_output_tokens,
             policy=policy,
+            output=renderer,
         )
     finally:
         store.close()
 
+    renderer.print_final_answer(result.history)
     console.print(f"[bold]stop[/bold]: {result.stop_reason}")
     console.print(f"[bold]iterations[/bold]: {result.iterations}")
     if result.exhaustion_report is not None:

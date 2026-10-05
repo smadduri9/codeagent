@@ -9,7 +9,8 @@ import typer
 from pydantic import TypeAdapter
 from rich.console import Console
 
-from codeagent.config import ConfigError, find_git_root, load_settings
+from codeagent.cli_output import CliRunOutputRenderer
+from codeagent.config import ConfigError, Settings, find_git_root, load_settings
 from codeagent.isolation.lock import RunLockError
 from codeagent.isolation.session import (
     DirtyTreeChoice,
@@ -17,9 +18,10 @@ from codeagent.isolation.session import (
     begin_isolation,
     finish_isolation,
 )
-from codeagent.loop import run_agent_loop
+from codeagent.loop import RunResult, run_agent_loop
 from codeagent.loop.interrupt import InterruptController, install_sigint_handler
-from codeagent.providers.base import ModelEvent
+from codeagent.loop.observers import RunOutputObserver
+from codeagent.providers.base import Message, ModelEvent
 from codeagent.providers.factory import build_managed_provider
 from codeagent.providers.fake import FakeProvider
 from codeagent.providers.protocol import Provider
@@ -49,44 +51,35 @@ def _resolve_provider(
     return provider, model, False
 
 
-def run_command(
-    goal: Annotated[str, typer.Argument(help="Task goal for the agent.")],
-    fake_script: Annotated[
-        Path | None,
-        typer.Option("--fake-script", hidden=True, help="Replay scripted provider turns."),
-    ] = None,
-    max_iterations: Annotated[int | None, typer.Option("--max-iterations")] = None,
-    persist: Annotated[
-        bool, typer.Option("--persist", help="Persist run state to SQLite.")
-    ] = False,
-    yes: Annotated[
-        bool,
-        typer.Option("--yes", "-y", help="Auto-approve Ask-tier tools (non-interactive)."),
-    ] = False,
-) -> None:
-    """Run the agent loop against the configured Groq model (or a fake script)."""
-    cwd = Path.cwd()
-    repo_root = find_git_root(cwd)
-    settings = load_settings(cwd)
-    interactive = not yes and fake_script is None
-    interrupt = InterruptController()
-    install_sigint_handler(interrupt)
+def execute_agent_run(
+    *,
+    goal: str,
+    cwd: Path,
+    repo_root: Path,
+    settings: Settings,
+    fake_script: Path | None = None,
+    interactive: bool = True,
+    interrupt: InterruptController | None = None,
+    max_iterations: int | None = None,
+    persist: bool = False,
+    output: RunOutputObserver | None = None,
+    history: list[Message] | None = None,
+) -> RunResult:
+    """Run the agent loop (optionally persisted) with optional streaming output."""
     isolation = None
     store: StateStore | None = None
     ctx = None
-    result = None
+    result: RunResult | None = None
+    renderer = output
 
     try:
         if persist:
             store = StateStore(default_state_db_path(repo_root))
-        try:
-            provider, model, scripted = _resolve_provider(
-                cwd=cwd,
-                fake_script=fake_script,
-                store=store,
-            )
-        except ConfigError as exc:
-            raise typer.BadParameter(str(exc)) from exc
+        provider, model, scripted = _resolve_provider(
+            cwd=cwd,
+            fake_script=fake_script,
+            store=store,
+        )
 
         workspace = repo_root
         run_id: str | None = None
@@ -163,6 +156,8 @@ def run_command(
                 system=system,
                 max_output_tokens=max_output,
                 policy=policy,
+                history=history,
+                output=renderer,
             )
             console.print(f"[bold]run_id[/bold]: {ctx.run_id}")
         else:
@@ -177,6 +172,8 @@ def run_command(
                 policy=policy,
                 repo_root=repo_root,
                 interrupt=interrupt,
+                history=history,
+                output=renderer,
             )
     finally:
         if isolation is not None:
@@ -189,7 +186,50 @@ def run_command(
 
     if result is None:
         raise typer.Exit(code=1)
+    return result
 
+
+def run_command(
+    goal: Annotated[str, typer.Argument(help="Task goal for the agent.")],
+    fake_script: Annotated[
+        Path | None,
+        typer.Option("--fake-script", hidden=True, help="Replay scripted provider turns."),
+    ] = None,
+    max_iterations: Annotated[int | None, typer.Option("--max-iterations")] = None,
+    persist: Annotated[
+        bool, typer.Option("--persist", help="Persist run state to SQLite.")
+    ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Auto-approve Ask-tier tools (non-interactive)."),
+    ] = False,
+) -> None:
+    """Run the agent loop against the configured Groq model (or a fake script)."""
+    cwd = Path.cwd()
+    repo_root = find_git_root(cwd)
+    settings = load_settings(cwd)
+    interactive = not yes and fake_script is None
+    interrupt = InterruptController()
+    install_sigint_handler(interrupt)
+
+    try:
+        renderer = CliRunOutputRenderer(console=console)
+        result = execute_agent_run(
+            goal=goal,
+            cwd=cwd,
+            repo_root=repo_root,
+            settings=settings,
+            fake_script=fake_script,
+            interactive=interactive,
+            interrupt=interrupt,
+            max_iterations=max_iterations,
+            persist=persist,
+            output=renderer,
+        )
+    except ConfigError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    renderer.print_final_answer(result.history)
     console.print(f"[bold]stop[/bold]: {result.stop_reason}")
     console.print(f"[bold]iterations[/bold]: {result.iterations}")
     if result.exhaustion_report is not None:
