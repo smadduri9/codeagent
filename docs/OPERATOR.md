@@ -78,7 +78,8 @@ From the repository root:
 codeagent run "Describe your task in plain language" --persist
 ```
 
-- `--persist` saves the run to SQLite (`.codeagent/state.db`), creates a git worktree
+- `--persist` saves the run to SQLite (`.codeagent/state.db`), writes a trace to
+  `.codeagent/traces/<run_id>.jsonl` and the `events` table, creates a git worktree
   (or branch fallback), and prints a final diff when finished.
 - The CLI prompts for **Ask**-tier tools (destructive shell, deletes, etc.). Use
   `y` once, `s` for the rest of the session, or `n` to deny.

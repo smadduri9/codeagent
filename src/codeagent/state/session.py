@@ -12,6 +12,7 @@ from codeagent.loop.interrupt import InterruptController
 from codeagent.loop.limits import RunLimits
 from codeagent.loop.policy import PolicyGate
 from codeagent.loop.runner import RunResult, run_agent_loop
+from codeagent.observability.run_emitter import build_run_emitter
 from codeagent.providers.base import Message
 from codeagent.providers.protocol import Provider
 from codeagent.state.history import rebuild_history
@@ -66,12 +67,15 @@ def begin_persisted_run(
     )
     limits = RunLimits.from_settings(settings, model)
     lifecycle = LifecycleState()
+    emitter = build_run_emitter(store, rid, repo_root)
     recorder = RunRecorder(
         store,
         rid,
         repo_root,
+        emitter=emitter,
         _step_index=store.next_step_index(rid),
     )
+    recorder.emit("run.started", {"goal": goal, "model": model})
     return PersistedRunContext(
         store=store,
         run_id=rid,
@@ -119,10 +123,12 @@ def prepare_resume(
 
     limits = RunLimits.from_settings(settings, model)
     lifecycle = LifecycleState(phase=RunPhase.INITIALIZING)
+    emitter = build_run_emitter(store, run_id, repo_root)
     recorder = RunRecorder(
         store,
         run_id,
         repo_root,
+        emitter=emitter,
         _step_index=store.next_step_index(run_id),
     )
     warnings = reconcile_files_read(store, run_id, repo_root)

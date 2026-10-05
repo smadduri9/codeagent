@@ -151,6 +151,17 @@ def run_agent_loop(
                     resumable=True,
                 )
 
+        iteration = guards.state.iterations
+        if recorder is not None:
+            recorder.emit(
+                "model.request",
+                {
+                    "iteration": iteration,
+                    "model": model,
+                    "message_count": len(chat_history),
+                },
+            )
+
         request = ModelRequest(
             system=system,
             messages=chat_history,
@@ -161,6 +172,20 @@ def run_agent_loop(
         started = time.perf_counter()
         reply = collect_stream(provider.stream(request))
         latency_ms = int((time.perf_counter() - started) * 1000)
+
+        if recorder is not None:
+            usage = reply.usage
+            recorder.emit(
+                "model.response",
+                {
+                    "iteration": iteration,
+                    "stop_reason": reply.stop_reason.value if reply.stop_reason else None,
+                    "tool_calls": len(reply.tool_calls),
+                    "tokens_in": usage.input if usage else 0,
+                    "tokens_out": usage.output if usage else 0,
+                    "latency_ms": latency_ms,
+                },
+            )
 
         if budget is not None and reply.usage is not None:
             budget.add_usage(reply.usage)
@@ -211,6 +236,15 @@ def run_agent_loop(
 
         tool_messages: list[Message] = []
         for call in reply.tool_calls:
+            if recorder is not None:
+                recorder.emit(
+                    "tool.requested",
+                    {
+                        "iteration": iteration,
+                        "tool": call.name,
+                        "call_id": call.id,
+                    },
+                )
             repeat = guards.on_tool_call(call)
             if repeat.warning and guard_warning is None:
                 guard_warning = repeat.warning
@@ -265,6 +299,11 @@ def run_agent_loop(
                     )
 
                 guards.on_allow()
+                if recorder is not None:
+                    recorder.emit(
+                        "tool.started",
+                        {"tool": call.name, "call_id": call.id},
+                    )
                 timer = ToolTimer()
                 result = policy.execute_allowed(call, decision)
                 body, _truncated = truncate_content(
@@ -346,6 +385,11 @@ def run_agent_loop(
                 )
 
             guards.on_allow()
+            if recorder is not None:
+                recorder.emit(
+                    "tool.started",
+                    {"tool": call.name, "call_id": call.id},
+                )
             timer = ToolTimer()
             try:
                 result = registry.run(call)

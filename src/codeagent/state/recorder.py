@@ -6,9 +6,12 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from codeagent.lifecycle import RunPhase
 from codeagent.loop.policy import RecordedDecision
+from codeagent.observability.events import EventEmitter
+from codeagent.observability.run_emitter import decision_payload
 from codeagent.permissions.types import Decision
 from codeagent.providers.base import Message, ToolCall, Usage
 from codeagent.state.store import StateStore, args_hash_for_tool
@@ -20,12 +23,18 @@ class RunRecorder:
     store: StateStore
     run_id: str
     repo_root: Path
+    emitter: EventEmitter | None = None
     _step_index: int = 0
     _current_step_id: int | None = None
     _pending_tools: dict[str, int] = field(default_factory=dict)
 
+    def emit(self, name: str, payload: dict[str, Any] | None = None) -> None:
+        if self.emitter is not None:
+            self.emitter.emit(name, payload)
+
     def on_phase(self, phase: RunPhase) -> None:
         self.store.update_run_phase(self.run_id, phase)
+        self.emit("run.phase_changed", {"phase": phase.value})
 
     def on_assistant_step(
         self,
@@ -57,6 +66,14 @@ class RunRecorder:
     def on_decision(self, record: RecordedDecision) -> None:
         if self._current_step_id is None:
             raise RuntimeError("assistant step must be recorded before tool decisions")
+        self.emit(
+            "policy.decision",
+            {
+                "tool": record.call.name,
+                "call_id": record.call.id,
+                **decision_payload(record.decision),
+            },
+        )
         tool_id = self.store.begin_tool_call(
             self.run_id,
             self._current_step_id,
@@ -71,6 +88,14 @@ class RunRecorder:
         from codeagent.permissions.types import Allow, Deny, RiskLevel
 
         decision: Decision = Allow(risk_level=RiskLevel.READ_ONLY) if allowed else Deny("denied")
+        self.emit(
+            "policy.decision",
+            {
+                "tool": call.name,
+                "call_id": call.id,
+                **decision_payload(decision),
+            },
+        )
         tool_id = self.store.begin_tool_call(
             self.run_id,
             self._current_step_id,
@@ -97,6 +122,15 @@ class RunRecorder:
             result_content=result_content,
             duration_ms=duration_ms,
         )
+        self.emit(
+            "tool.completed",
+            {
+                "tool": call.name,
+                "call_id": call.id,
+                "ok": ok,
+                "duration_ms": duration_ms,
+            },
+        )
 
     def record_file_read(self, path: Path, content: str) -> None:
         rel = path.as_posix()
@@ -113,6 +147,15 @@ class RunRecorder:
         *,
         resumable: bool = False,
     ) -> None:
+        terminal = {
+            "phase": phase.value,
+            "stop_reason": stop_reason,
+            "resumable": resumable,
+        }
+        if phase in {RunPhase.FAILED, RunPhase.CANCELLED}:
+            self.emit("run.failed", terminal)
+        else:
+            self.emit("run.completed", terminal)
         if resumable:
             persist_phase = RunPhase.WORKING if phase is RunPhase.STOPPED else phase
             self.store.finish_run(
