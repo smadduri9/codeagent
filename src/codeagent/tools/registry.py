@@ -6,8 +6,9 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from codeagent.config import ToolSettings
+from codeagent.config import Settings, ToolSettings
 from codeagent.providers.base import ToolCall
+from codeagent.state.store import StateStore
 from codeagent.tools.base import RiskLevel, StrictArgs, ToolResult, ToolSpec
 from codeagent.tools.command_tools import (
     BashArgs,
@@ -46,7 +47,15 @@ from codeagent.tools.git_tools import (
     handle_git_show,
     handle_git_status,
 )
+from codeagent.tools.plan_tools import UpdatePlanArgs, handle_update_plan
+from codeagent.tools.verification_tools import (
+    RunTestsArgs,
+    RunVerificationArgs,
+    handle_run_tests,
+    handle_run_verification,
+)
 from codeagent.tools.workspace_context import WorkspaceToolContext
+from codeagent.verification.checks import VerificationCheck
 
 
 class ToolValidationError(Exception):
@@ -305,6 +314,57 @@ class ToolRegistry:
             risk_level="READ_ONLY",
         )
         return ctx
+
+    def register_workflow_tools(
+        self,
+        *,
+        store: StateStore,
+        run_id: str,
+        repo_root: Path,
+        settings: Settings,
+        edited_py_files: list[Path],
+        on_plan_updated: Callable[[str], None] | None = None,
+        on_verification_check: Callable[[VerificationCheck], None] | None = None,
+    ) -> None:
+        self.register(
+            "update_plan",
+            "Persist plan items.",
+            UpdatePlanArgs,
+            lambda args: handle_update_plan(
+                args, store=store, run_id=run_id, on_updated=on_plan_updated
+            ),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "run_verification",
+            "Run verification pipeline.",
+            RunVerificationArgs,
+            lambda args: handle_run_verification(
+                args,
+                repo_root=repo_root,
+                settings=settings,
+                store=store,
+                run_id=run_id,
+                edited_py_files=edited_py_files,
+                on_check=on_verification_check,
+            ),
+            risk_level="READ_ONLY",
+        )
+        self.register(
+            "run_tests",
+            "Run tests.",
+            RunTestsArgs,
+            lambda args: handle_run_tests(
+                args,
+                repo_root=repo_root,
+                settings=settings,
+                store=store,
+                run_id=run_id,
+                edited_py_files=edited_py_files,
+                on_check=on_verification_check,
+            ),
+            risk_level="READ_ONLY",
+        )
 
 
 def _bind_command[ArgModel: BaseModel](

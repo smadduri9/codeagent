@@ -1,0 +1,6 @@
+id: trivial_echo
+check:
+  command: ["python", "-c", "print('ok')"]
+reference_transcript:
+  - role: assistant
+    content: done

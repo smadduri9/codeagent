@@ -2,8 +2,10 @@
 
 import typer
 
+from codeagent.cli_init import init_command
 from codeagent.cli_rollback import rollback_command
 from codeagent.cli_run import run_command
+from codeagent.cli_trace import trace_command
 
 app = typer.Typer(
     help="A local coding agent with deterministic permissions and verification.",
@@ -19,6 +21,8 @@ def main() -> None:
 
 app.command("run")(run_command)
 app.command("rollback")(rollback_command)
+app.command("init")(init_command)
+app.command("trace")(trace_command)
 
 
 if __name__ == "__main__":

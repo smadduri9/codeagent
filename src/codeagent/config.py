@@ -93,6 +93,10 @@ class IsolationSettings(ConfigModel):
 
 class VerifySettings(ConfigModel):
     commands: list[list[Nonempty]] = Field(default_factory=list)
+    test: list[Nonempty] | None = None
+    typecheck: list[Nonempty] | None = None
+    lint: list[Nonempty] | None = None
+    build: list[Nonempty] | None = None
     timeout_s: PositiveInt = 600
 
     @field_validator("commands")

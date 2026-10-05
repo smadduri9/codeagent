@@ -1,0 +1,6 @@
+id: trivial_math
+check:
+  command: ["python", "-c", "assert 1+1==2"]
+reference_transcript:
+  - role: assistant
+    content: ok
