@@ -20,6 +20,13 @@ def resolve_model_name(settings: Settings) -> str:
     raise ConfigError(MISSING_MAIN_MODEL_MESSAGE)
 
 
+def resolve_run_model(settings: Settings) -> str:
+    """Live run model: ``cheap`` when set, otherwise ``main`` (must be configured)."""
+    if settings.model.cheap:
+        return settings.model.cheap
+    return resolve_model_name(settings)
+
+
 def _openai_client(base_url: str, secret: SecretStr) -> OpenAI:
     credential_field = "api" + "_key"
     return OpenAI(
@@ -36,7 +43,7 @@ def build_managed_provider(
 ) -> tuple[ManagedProvider, str]:
     """Load API key before isolation; wrap Groq-compatible provider with limits."""
     credential = load_api_key(settings.model.api_key_env, start_dir)
-    model = resolve_model_name(settings)
+    model = resolve_run_model(settings)
     client = _openai_client(settings.model.base_url, credential)
     env_name = settings.model.api_key_env
     inner = OpenAICompatibleProvider(

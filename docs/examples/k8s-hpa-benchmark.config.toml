@@ -1,0 +1,56 @@
+# Copy to your project as .codeagent/config.toml (merged with ~/.codeagent/config.toml).
+# Groq free-tier chat model ids (verify in console): https://console.groq.com/docs/models
+# Rate limits table: https://console.groq.com/docs/rate-limits
+
+[model]
+provider = "openai_compatible"
+base_url = "https://api.groq.com/openai/v1"
+api_key_env = "GROQ_API_KEY"
+# Start runs on the smaller model; main is required and used when cheap is unset.
+cheap = "openai/gpt-oss-20b"
+main = "openai/gpt-oss-120b"
+# Separate daily quotas per model; used only after quota exhaustion on the active model.
+fallbacks = ["qwen/qwen3.8-27b"]
+reasoning_effort = "low"
+profile = "free_tier"
+
+[limits]
+max_iterations = 25
+max_total_tokens = 150000
+
+[request]
+max_request_tokens = 6500
+max_output_tokens = 1000
+
+[rate_limits."openai/gpt-oss-20b"]
+rpm = 30
+rpd = 1000
+tpm = 8000
+tpd = 200000
+
+[rate_limits."openai/gpt-oss-120b"]
+rpm = 30
+rpd = 1000
+tpm = 8000
+tpd = 200000
+
+[rate_limits."qwen/qwen3.8-27b"]
+rpm = 30
+rpd = 1000
+tpm = 8000
+tpd = 200000
+
+[prices."openai/gpt-oss-20b"]
+input = 0.0
+output = 0.0
+cache_read = 0.0
+
+[prices."openai/gpt-oss-120b"]
+input = 0.0
+output = 0.0
+cache_read = 0.0
+
+[prices."qwen/qwen3.8-27b"]
+input = 0.0
+output = 0.0
+cache_read = 0.0
