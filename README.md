@@ -115,17 +115,17 @@ Shell strings cannot be proven safe by parsing; `run_command` uses argument arra
 
 Evaluation ([DESIGN.md](DESIGN.md) section 11):
 
-| Mode | Result | Notes |
+| Tier | Result | Notes |
 |------|--------|--------|
-| Scripted replay (40 tasks + harness smoke) | **42/42** pass | Drives `FakeProvider` through the real loop; see [evals/baselines/replay-40/](evals/baselines/replay-40/) |
-| Live `core12` slice | **Partial** (2 tasks completed, 2 passed; 2 of 12 in slice) | Quota-aware; see [evals/baselines/live-core12-partial.md](evals/baselines/live-core12-partial.md) |
+| Scripted replay (40 tasks + harness smoke) | **42/42** pass in CI | Drives `FakeProvider` through the real loop, tools, and permissions; see [evals/baselines/replay-40/](evals/baselines/replay-40/) |
+| Live `core12` slice | Optional, quota-aware | Run locally with `codeagent eval --live --slice core12 --resume`; resumes across days under Groq free-tier limits. Use for model comparison, not as a published pass rate. |
 
-Replay proves harness and mechanics; live slices measure model quality under free-tier limits. Do not treat a partial live baseline as a full 40-task score.
+Replay is the regression gate in CI. Live slices exercise real models when you have quota; details and baselines live under [evals/baselines/](evals/baselines/).
 
 ## Design decisions and scope
 
 - Full design: [DESIGN.md](DESIGN.md). Build history: [docs/PROGRESS.md](docs/PROGRESS.md). Decision records: [docs/decisions/](docs/decisions/).
-- **Repository indexing (phase 9) was not built.** The baseline did not meet the gate in DESIGN section 9.1 ([docs/decisions/0008-phase-9-gate-not-met.md](docs/decisions/0008-phase-9-gate-not-met.md)). Search stays in the loop with `grep`, `glob`, and `read_file` until data says otherwise.
+- **Repository indexing (phase 9) is gated** on evaluation evidence in DESIGN section 9.1 ([docs/decisions/0008-phase-9-gate-not-met.md](docs/decisions/0008-phase-9-gate-not-met.md)). Search stays in the loop with `grep`, `glob`, and `read_file` until data supports an index.
 - **Scope:** tuned for small repositories and focused tasks under Groq free-tier context and quota limits (DESIGN section 8.20). Not aimed at large monorepos or Windows.
 
 ## Repository map
