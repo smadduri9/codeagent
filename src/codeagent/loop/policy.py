@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from codeagent.permissions.approvals import ApprovalPrompt, ApprovalStore, resolve_ask
+from codeagent.permissions.approvals import ApprovalResponder, ApprovalStore, resolve_ask
 from codeagent.permissions.engine import decide
 from codeagent.permissions.mode import resolve_non_interactive
 from codeagent.permissions.run_context import PermissionRun
@@ -28,7 +28,7 @@ class PolicyGate:
     run: PermissionRun
     registry: ToolRegistry
     approval_store: ApprovalStore = field(default_factory=ApprovalStore)
-    approval_prompt: ApprovalPrompt | None = None
+    approval_prompt: ApprovalResponder | None = None
     decisions: list[RecordedDecision] = field(default_factory=list)
     executed_calls: list[ToolCall] = field(default_factory=list)
     on_record: Callable[[RecordedDecision], None] | None = None

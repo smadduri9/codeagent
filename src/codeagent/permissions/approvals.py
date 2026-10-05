@@ -6,7 +6,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Protocol
 
 from codeagent.permissions.types import Allow, Ask, Decision, Deny, RiskLevel
 from codeagent.providers.base import ToolCall
@@ -76,6 +76,12 @@ class ApprovalStore:
 ApprovalChoice = Literal["once", "deny", "session"]
 
 
+class ApprovalResponder(Protocol):
+    choice: ApprovalChoice | str
+
+    def resolve(self, call: ToolCall, ask: Ask) -> Decision: ...
+
+
 @dataclass
 class ApprovalPrompt:
     """Stub approval UI for tests and CLI hooks."""
@@ -100,7 +106,7 @@ def resolve_ask(
     call: ToolCall,
     ask: Ask,
     *,
-    prompt: ApprovalPrompt,
+    prompt: ApprovalResponder,
     store: ApprovalStore,
     session_allowed_hashes: set[str],
 ) -> Decision:
