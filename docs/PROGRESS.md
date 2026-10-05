@@ -34,10 +34,10 @@ in progress (P1-F1 merged). Later phases remain unstarted.
 | P4-F5 | Checkpoints, rollback, final diff | `feat/p4-f5-checkpoints-rollback` | todo | — | — |
 | P4-F6 | Platform notes and cross-OS tests | `docs/p4-f6-platform-notes` | todo | — | — |
 | P5-F1 | SQLite store and migrations | `feat/p5-f1-sqlite-store` | todo | — | — |
-| P5-F2 | Persist the run | `feat/phase-5-6-resume-budget` | in-progress | — | — |
-| P5-F3 | Resume | `feat/phase-5-6-resume-budget` | in-progress | — | — |
-| P5-F4 | Budgets and graceful exhaustion | `feat/phase-5-6-resume-budget` | in-progress | — | — |
-| P5-F5 | Interrupt handling | `feat/phase-5-6-resume-budget` | in-progress | — | — |
+| P5-F2 | Persist the run | `feat/phase-5-6-resume-budget` | merged | [#20](https://github.com/smadduri9/codeagent/pull/20) | `e7a84a5` |
+| P5-F3 | Resume | `feat/phase-5-6-resume-budget` | merged | [#20](https://github.com/smadduri9/codeagent/pull/20) | `e7a84a5` |
+| P5-F4 | Budgets and graceful exhaustion | `feat/phase-5-6-resume-budget` | merged | [#20](https://github.com/smadduri9/codeagent/pull/20) | `e7a84a5` |
+| P5-F5 | Interrupt handling | `feat/phase-5-6-resume-budget` | merged | [#20](https://github.com/smadduri9/codeagent/pull/20) | `e7a84a5` |
 | P6-F1 | Provider contract test harness | `test/p6-f1-provider-contract` | todo | — | — |
 | P6-F2 | OpenAI-compatible provider (Groq) | `feat/p6-f2-openai-compatible-provider` | todo | — | — |
 | P6-F3 | Rate limiter and quota manager | `feat/p6-f3-rate-limits-and-quota` | todo | — | — |
