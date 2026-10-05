@@ -111,6 +111,19 @@ class IndexSettings(ConfigModel):
     enabled: bool = False
 
 
+class ContextSettings(ConfigModel):
+    summarize_threshold_ratio: float = 0.85
+    handoff_threshold_ratio: float = 0.95
+    max_summary_tokens: PositiveInt = 800
+    max_summaries: PositiveInt = 3
+    prune_keep_tool_results: PositiveInt = 6
+    summarize_keep_turns: PositiveInt = 4
+
+
+class QuotaSettings(ConfigModel):
+    max_wait_s: PositiveInt = 120
+
+
 class Price(ConfigModel):
     input: Nonnegative
     output: Nonnegative
@@ -127,6 +140,8 @@ class Settings(ConfigModel):
     isolation: IsolationSettings = Field(default_factory=IsolationSettings)
     verify: VerifySettings = Field(default_factory=VerifySettings)
     index: IndexSettings = Field(default_factory=IndexSettings)
+    context: ContextSettings = Field(default_factory=ContextSettings)
+    quota: QuotaSettings = Field(default_factory=QuotaSettings)
     prices: dict[Nonempty, Price] = Field(default_factory=dict)
 
 
@@ -178,3 +193,8 @@ def load_settings(
     except ValidationError:
         # Never include input values (or arbitrary user-provided field names).
         raise ConfigError("Invalid configuration: check keys, types, and value ranges") from None
+
+
+def apply_profile(settings: Settings) -> Settings:
+    """Apply the configured model profile; defaults are already in Settings."""
+    return settings
