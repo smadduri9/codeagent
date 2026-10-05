@@ -1,0 +1,422 @@
+[
+  {
+    "task_id": "feat-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13344024999969406,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "feat-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.1332154170013382,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "feat-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14170075000583893,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "feat-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14677670800301712,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "feat-05",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13632833300653147,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loc-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015899291000096127,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loc-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015009499998996034,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loc-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.014691208998556249,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loc-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.014473124996584374,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loc-05",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.014437249999900814,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loop-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015418000002682675,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loop-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015807333998964168,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "loop-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.01590804199804552,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfd-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.1371473330000299,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfd-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13954520800325554,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfd-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13577512500341982,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfd-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13417124999978114,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfd-05",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.1505814170013764,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfeat-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.1429637500041281,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfeat-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14255758299987065,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfeat-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14092641699971864,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfeat-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.1416366659977939,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "mfeat-05",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13843420799821615,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "nav-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015505041999858804,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "nav-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.014680291998956818,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "nav-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015129874998820014,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "nav-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.014629040997533593,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "nav-05",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.014884791999065783,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "safe-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015542792003543582,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "safe-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015690749998611864,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "safe-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015387584004201926,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "sfd-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13895837500604102,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "sfd-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.15403758300089976,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "sfd-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.15074462500342634,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "sfd-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.1425991670039366,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "sfd-05",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14456525000423426,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "trep-01",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14348204099951545,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "trep-02",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14328045900037978,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "trep-03",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.14117308300046716,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "trep-04",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.13762358399981167,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "trivial_echo",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.01593325000430923,
+    "error": null,
+    "runs": 1
+  },
+  {
+    "task_id": "trivial_math",
+    "ok": true,
+    "mode": "replay",
+    "tokens": 0,
+    "policy_violations": 0,
+    "duration_s": 0.015114417001313996,
+    "error": null,
+    "runs": 1
+  }
+]
