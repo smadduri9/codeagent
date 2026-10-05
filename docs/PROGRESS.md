@@ -64,7 +64,7 @@ no eval evidence). See decision records 0007 and 0008.
 | P8-F6 | Task batch B (19 tasks) | `test/p8-f5-f7-eval-batches` | merged | [#19](https://github.com/smadduri9/codeagent/pull/19) | `77f406c` |
 | P8-F7 | Task batch C (6 tasks) | `test/p8-f5-f7-eval-batches` | merged | [#19](https://github.com/smadduri9/codeagent/pull/19) | `77f406c` |
 | P8-F8 | Demonstration fixture | `feat/p8-f8-payment-demo` | merged | — | `4b22201` |
-| P8-F9 | Baseline run and report | `docs/p8-f9-baseline` | merged | closeout PR | see session |
+| P8-F9 | Baseline run and report | `docs/p8-f9-baseline` | merged | [#22](https://github.com/smadduri9/codeagent/pull/22) | `f76771f` |
 | P8-F10 | Optional Docker sandbox | `feat/p8-f10-docker-sandbox` | skipped | — | [0007](docs/decisions/0007-skip-docker-sandbox.md) |
 | P9-F1 | Scanner and manifest | `feat/p9-f1-scanner` | skipped | — | [0008](docs/decisions/0008-phase-9-gate-not-met.md) |
 | P9-F2 | Symbol extraction | `feat/p9-f2-symbols` | skipped | — | [0008](docs/decisions/0008-phase-9-gate-not-met.md) |
