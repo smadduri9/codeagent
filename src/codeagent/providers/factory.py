@@ -1,0 +1,47 @@
+"""Construct live model providers from settings and explicit key loading."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from openai import OpenAI
+
+from codeagent.config import ConfigError, Settings
+from codeagent.config_secrets import load_api_key
+from codeagent.providers.managed import ManagedProvider
+from codeagent.providers.openai_compatible import OpenAICompatibleProvider
+from codeagent.state.store import StateStore
+
+
+def resolve_model_name(settings: Settings) -> str:
+    if settings.model.main:
+        return settings.model.main
+    raise ConfigError("Set [model].main in config.toml before a live run")
+
+
+def build_managed_provider(
+    settings: Settings,
+    start_dir: Path,
+    *,
+    store: StateStore | None = None,
+) -> tuple[ManagedProvider, str]:
+    """Load API key before isolation; wrap Groq-compatible provider with limits."""
+    key = load_api_key(settings.model.api_key_env, start_dir)
+    model = resolve_model_name(settings)
+    client = OpenAI(
+        base_url=settings.model.base_url,
+        api_key=key.get_secret_value(),
+    )
+    inner = OpenAICompatibleProvider(
+        base_url=settings.model.base_url,
+        api_key_env=settings.model.api_key_env,
+        client=client,
+    )
+    managed = ManagedProvider(
+        inner=inner,
+        settings=settings,
+        store=store,
+        model=model,
+        fallback_models=list(settings.model.fallbacks),
+    )
+    return managed, model

@@ -10,6 +10,7 @@ from codeagent.lifecycle import LifecycleState, RunPhase
 from codeagent.loop.budget import BudgetTracker
 from codeagent.loop.interrupt import InterruptController
 from codeagent.loop.limits import RunLimits
+from codeagent.loop.policy import PolicyGate
 from codeagent.loop.runner import RunResult, run_agent_loop
 from codeagent.providers.base import Message
 from codeagent.providers.protocol import Provider
@@ -151,10 +152,16 @@ def run_with_persistence(
     interrupt: InterruptController | None = None,
     resume_warnings: list[str] | None = None,
     max_output_chars: int = 8000,
+    system: str | None = None,
+    max_output_tokens: int | None = None,
+    policy: PolicyGate | None = None,
 ) -> RunResult:
     iterations = max_iterations if max_iterations is not None else ctx.limits.max_iterations
     if history is None and ctx.recorder._step_index > 0:
         history = rebuild_history(ctx.store, ctx.run_id)
+
+    loop_system = system if system is not None else "You are a coding agent."
+    loop_tokens = max_output_tokens if max_output_tokens is not None else 256
 
     return run_agent_loop(
         goal,
@@ -162,6 +169,9 @@ def run_with_persistence(
         registry,
         max_iterations=iterations,
         max_output_chars=max_output_chars,
+        system=loop_system,
+        model=ctx.limits.model,
+        max_output_tokens=loop_tokens,
         store=ctx.store,
         run_id=ctx.run_id,
         repo_root=ctx.repo_root,
@@ -172,4 +182,5 @@ def run_with_persistence(
         budget=ctx.budget,
         interrupt=interrupt,
         resume_warnings=resume_warnings,
+        policy=policy,
     )
