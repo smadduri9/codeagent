@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "A local CLI coding agent with deterministic permissions and verification"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["typer>=0.15,<1", "rich>=13.9,<15", "pydantic>=2.10,<3"]
+dependencies = [
+    "typer>=0.15,<1",
+    "rich>=13.9,<15",
+    "pydantic>=2.10,<3",
+    "pyyaml>=6.0,<7",
+]
 
 [project.optional-dependencies]
 dev = ["ruff>=0.11,<1", "mypy>=1.15,<2", "pytest>=8.3,<10"]
@@ -33,5 +38,6 @@ strict = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "--strict-markers"
 markers = ["live: optional real-provider checks, excluded from the default check script"]
