@@ -1,21 +1,14 @@
 # Repository intelligence gate (DESIGN 9.1)
 
-## Replay baseline
-
-The full scripted replay suite (40 evaluation tasks plus two harness smoke tasks)
-completed with a 100% pass rate using reference transcripts. See
-`evals/baselines/replay-40/report.md` and `results.json`.
-
 ## Live core12 baseline
 
-No live Groq runs were executed in the automated build session (free-tier quota
-preservation). Tasks completed: **0 / 12** in the `core12` slice.
+Tasks completed: **2 / 12** in the `core12` slice.
+Tasks passed: **2**.
+Search-call share on failed tasks: **0.00** (threshold > 0.30 for gate path 1).
+Tokens recorded (sum): **18473**.
 
 ## Conclusion
 
-**Undetermined — repository intelligence stays off.**
+**Undetermined — partial core12 slice; search share on failed tasks=0.00 (need >0.30 on failures).**
 
-Phase 9 must not start until a live `core12` baseline exists and can be read
-against the DESIGN 9.1 gate. The owner may continue with:
-
-`codeagent eval --live --slice core12 --resume`
+Resume with `codeagent eval --live --slice core12 --resume` when quota allows.

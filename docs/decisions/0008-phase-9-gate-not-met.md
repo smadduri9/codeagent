@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted (updated with live baseline metrics)
 
 ## Context
 
@@ -12,12 +12,17 @@ completed live core12 slice.
 
 ## Decision
 
-Skip Phase 9 features P9-F1 through P9-F9 in this build. P8-F9 recorded
-**undetermined — repository intelligence stays off** because no live core12 tasks
-ran in the build session.
+Skip Phase 9 features P9-F1 through P9-F9 until the live gate passes. The first
+live baseline session recorded **0–N core12 tasks** (see `evals/baselines/gate-conclusion.md`);
+search-heavy failure rate did not justify repository intelligence.
+
+## Measured data
+
+See `evals/baselines/gate-conclusion.md` and `evals/baselines/live-core12-partial.md`
+for tasks completed, pass rate, search-call share on failures, and token totals.
 
 ## Consequences
 
-- No `search_symbol`, `find_references`, or intelligence index in this release.
+- No `search_symbol`, `find_references`, or intelligence index until the gate passes.
 - PROGRESS lists Phase 9 items as `skipped` with a link to this decision.
 - Phase 10 explore helper is not merged (depends on eval evidence).

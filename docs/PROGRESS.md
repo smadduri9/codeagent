@@ -1,8 +1,8 @@
 # Build progress
 
 Phase 0 is complete at tag `phase-0`. Phases 1–8 initial release work is merged on
-`main` except optional Phase 9 (skipped: gate undetermined) and Phase 10 (skipped:
-no eval evidence). See decision records 0007 and 0008.
+`main`. Phase 9 remains skipped (gate not met on partial live baseline). Phase 10
+skipped (no eval evidence). See decision records 0007, 0008, and 0009.
 
 | ID | Title | Branch | Status | PR | Merge commit |
 |---|---|---|---|---|---|
@@ -81,7 +81,7 @@ no eval evidence). See decision records 0007 and 0008.
 
 - P8-F5–F7: PR #19; 40-task fixtures, `core12` slice, replay validation tests; 407+ tests green.
 - P8-F8: payment fixture on `main` at `4b22201`; `tests/unit/test_payment_demo.py`.
-- P8-F9: replay baseline under `evals/baselines/replay-40/`; live core12 0/12; gate undetermined per `evals/baselines/gate-conclusion.md`.
+- P8-F9: replay baseline under `evals/baselines/replay-40/`; live core12 **2/12** (feat-01, feat-02 pass); gate **not met / undetermined** per `evals/baselines/gate-conclusion.md`.
 - P8-F10: merged PR #24; Docker command sandbox per decision 0009.
 - Phase 9: skipped per decision 0008.
 - P10-F1: skipped (no ablation baseline).

@@ -2,6 +2,7 @@
 
 import typer
 
+from codeagent.cli_eval import eval_command
 from codeagent.cli_init import init_command
 from codeagent.cli_resume import resume_command
 from codeagent.cli_rollback import rollback_command
@@ -27,6 +28,7 @@ app.command("status")(status_command)
 app.command("rollback")(rollback_command)
 app.command("init")(init_command)
 app.command("trace")(trace_command)
+app.command("eval")(eval_command)
 
 
 if __name__ == "__main__":
