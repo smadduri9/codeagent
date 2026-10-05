@@ -24,7 +24,7 @@ def _openai_client(base_url: str, secret: SecretStr) -> OpenAI:
     credential_field = "api" + "_key"
     return OpenAI(
         base_url=base_url,
-        **{credential_field: secret.get_secret_value()},
+        **{credential_field: secret.get_secret_value()},  # type: ignore[arg-type]
     )
 
 
@@ -42,7 +42,7 @@ def build_managed_provider(
     inner = OpenAICompatibleProvider(
         base_url=settings.model.base_url,
         client=client,
-        **{"api_key" + "_env": env_name},
+        **{"api_key" + "_env": env_name},  # type: ignore[arg-type]
     )
     managed = ManagedProvider(
         inner=inner,
