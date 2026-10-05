@@ -1,0 +1,2 @@
+files:
+  mod5.py: "def value():\n    return int('x')\n"

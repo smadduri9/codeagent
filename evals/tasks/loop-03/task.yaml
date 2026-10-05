@@ -1,0 +1,10 @@
+id: loop-03
+category: loop_failure
+goal: Flaky test signal is classified without infinite retries.
+check:
+  command:
+  - python
+  - verify.py
+reference_transcript:
+- role: assistant
+  content: fixture-replay

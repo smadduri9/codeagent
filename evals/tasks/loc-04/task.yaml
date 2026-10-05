@@ -1,0 +1,10 @@
+id: loc-04
+category: localization
+goal: Report the file and line number of the raised error in the fixture.
+check:
+  command:
+  - python
+  - verify.py
+reference_transcript:
+- role: assistant
+  content: fixture-replay

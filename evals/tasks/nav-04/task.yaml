@@ -1,0 +1,10 @@
+id: nav-04
+category: navigation
+goal: Find the file path (relative to the repo) that contains the token 'pkg/util.py'.
+check:
+  command:
+  - python
+  - verify.py
+reference_transcript:
+- role: assistant
+  content: fixture-replay

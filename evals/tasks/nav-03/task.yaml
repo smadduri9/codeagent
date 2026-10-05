@@ -1,0 +1,10 @@
+id: nav-03
+category: navigation
+goal: Find the file path (relative to the repo) that contains the token 'deep/nested/hook.py'.
+check:
+  command:
+  - python
+  - verify.py
+reference_transcript:
+- role: assistant
+  content: fixture-replay

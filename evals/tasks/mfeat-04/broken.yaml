@@ -1,0 +1,2 @@
+files:
+  fmt.py: "def format_name(name: str) -> str:\n    return name\n"

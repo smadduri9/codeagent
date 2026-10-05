@@ -1,0 +1,2 @@
+files:
+  pkg/b.py: "def helper():\n    return 40\n"

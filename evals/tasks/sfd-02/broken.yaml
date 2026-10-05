@@ -1,0 +1,2 @@
+files:
+  mod2.py: "def value():\n    return 0\n"

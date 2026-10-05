@@ -1,0 +1,10 @@
+id: nav-02
+category: navigation
+goal: Find the file path (relative to the repo) that contains the token 'lib/one.txt'.
+check:
+  command:
+  - python
+  - verify.py
+reference_transcript:
+- role: assistant
+  content: fixture-replay

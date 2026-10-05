@@ -1,0 +1,12 @@
+id: feat-05
+category: small_feature
+goal: Implement the missing behavior so tests pass.
+check:
+  command:
+  - python
+  - -m
+  - pytest
+  - -q
+reference_transcript:
+- role: assistant
+  content: fixture-replay
