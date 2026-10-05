@@ -18,27 +18,43 @@ Step-by-step instructions for running CodeAgent on any GitHub repository with Gr
    cd your-project
    ```
 
-2. Choose a Groq model id (from your Groq console) and configure it **one** of these ways:
+2. Configure Groq models and your API key. As of 2025–2026, Groq’s free-tier **chat**
+   models are typically `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, and
+   `qwen/qwen3.8-27b` (each has its own daily quota). Confirm ids and limits in the
+   [Groq models](https://console.groq.com/docs/models) and
+   [rate limits](https://console.groq.com/docs/rate-limits) docs — do not rely on
+   third-party tables alone.
 
-   - **Minimal (`.env` only):** in the repository root `.env` (gitignored), set both:
+   **Recommended free-tier stack** (copy into `.codeagent/config.toml` or start from
+   `docs/examples/k8s-hpa-benchmark.config.toml` in the CodeAgent repo):
+
+   ```toml
+   [model]
+   cheap = "openai/gpt-oss-20b"       # live runs start here when set
+   main = "openai/gpt-oss-120b"       # required; used when cheap is unset
+   fallbacks = ["qwen/qwen3.8-27b"]   # only on quota exhaustion for the active model
+
+   [rate_limits."openai/gpt-oss-20b"]
+   rpm = 30
+   rpd = 1000
+   tpm = 8000
+   tpd = 200000
+   # repeat [rate_limits] for each model id you use (see DESIGN 8.20)
+   ```
+
+   - **Minimal (`.env` only):** in the repository root `.env` (gitignored):
 
      ```env
      GROQ_API_KEY=...
-     CODEAGENT_MODEL=your-groq-model-id
+     CODEAGENT_MODEL=openai/gpt-oss-120b
      ```
 
-     `CODEAGENT_MODEL` uses the same lookup order as the API key: process environment,
-     then `<repo>/.env`, then `~/.codeagent/.env`.
+     `CODEAGENT_MODEL` sets `main` only (not `cheap` or `fallbacks`). Same lookup order
+     as the API key: process environment, then `<repo>/.env`, then `~/.codeagent/.env`.
 
-   - **Config file:** create `.codeagent/config.toml` (merged with `~/.codeagent/config.toml`):
-
-     ```toml
-     [model]
-     main = "your-groq-model-id"
-
-     [limits]
-     max_iterations = 20
-     ```
+   - **Config file:** create `.codeagent/config.toml` (merged with `~/.codeagent/config.toml`).
+     When `cheap` is set, `codeagent run` uses it first; on daily quota exhaustion the
+     agent switches through `fallbacks` in order (recorded in run events).
 
    If neither `model.main` nor `CODEAGENT_MODEL` is set, live runs fail with a message
    listing these paths and an example snippet.
