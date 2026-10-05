@@ -42,7 +42,10 @@ def _line_count(path: Path) -> int:
 
 
 def load_task(task_dir: Path) -> dict[str, Any]:
-    return yaml.safe_load((task_dir / "task.yaml").read_text(encoding="utf-8"))
+    raw = yaml.safe_load((task_dir / "task.yaml").read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        return {}
+    return raw
 
 
 def run_check(task_dir: Path) -> int:

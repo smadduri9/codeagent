@@ -35,7 +35,10 @@ class EvalState:
 
 
 def load_task(path: Path) -> dict[str, Any]:
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        return {}
+    return raw
 
 
 def list_task_dirs(tasks_dir: Path, *, slice_name: str | None = None) -> list[Path]:

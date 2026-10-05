@@ -77,7 +77,7 @@ ApprovalChoice = Literal["once", "deny", "session"]
 
 
 class ApprovalResponder(Protocol):
-    choice: ApprovalChoice | str
+    choice: ApprovalChoice
 
     def resolve(self, call: ToolCall, ask: Ask) -> Decision: ...
 
