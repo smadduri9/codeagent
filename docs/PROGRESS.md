@@ -79,7 +79,8 @@ skipped (no eval evidence). See decision records 0007, 0008, and 0009.
 
 ## Session evidence
 
-- CLI chat + streaming: branch `feat/cli-chat-streaming` — default `codeagent` / `codeagent chat` REPL, streamed run output, final answer block; `scripts/check.sh` green.
+- P8-F2 instrumentation fix: PR [#31](https://github.com/smadduri9/codeagent/pull/31) — trace events on persisted runs; `tests/unit/test_observability_instrumentation.py`.
+- CLI chat + streaming: PR [#32](https://github.com/smadduri9/codeagent/pull/32) — default `codeagent` / `codeagent chat` REPL, streamed run output, final answer block; `tests/unit/test_cli_run.py`.
 - Groq free-tier stack: PR #28 — `cheap`/`main`/`fallbacks` docs, `resolve_run_model`, k8s-hpa-benchmark example config.
 - P8-F5–F7: PR #19; 40-task fixtures, `core12` slice, replay validation tests; 407+ tests green.
 - P8-F8: payment fixture on `main` at `4b22201`; `tests/unit/test_payment_demo.py`.
