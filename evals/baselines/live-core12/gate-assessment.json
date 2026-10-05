@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "conclusion": "Undetermined \u2014 partial core12 slice; search share on failed tasks=0.00 (need >0.30 on failures).",
+  "search_share_failed": 0.0,
+  "tasks_run": 2,
+  "tasks_passed": 2
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "task_id": "feat-01",
+    "ok": true,
+    "mode": "live",
+    "tokens": 10929,
+    "policy_violations": 0,
+    "duration_s": 113.76943133299937,
+    "error": null,
+    "runs": 1,
+    "model_calls": 0,
+    "search_calls": 0
+  },
+  {
+    "task_id": "feat-02",
+    "ok": true,
+    "mode": "live",
+    "tokens": 7544,
+    "policy_violations": 0,
+    "duration_s": 88.13989700000093,
+    "error": null,
+    "runs": 1,
+    "model_calls": 0,
+    "search_calls": 0
+  }
+]

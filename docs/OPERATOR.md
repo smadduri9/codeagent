@@ -97,10 +97,10 @@ codeagent rollback <run_id>
 From the CodeAgent source tree:
 
 ```bash
-codeagent eval --slice core12 --live --resume
+codeagent eval --live --slice core12 --quota-stop 2 --resume
 ```
 
-Stops when daily quota is exhausted; results land under `evals/baselines/`. (Requires the eval CLI from the live baseline PR.)
+Stops when daily quota is exhausted; results under `evals/baselines/live-core12/`.
 
 ## Recommended first local command
 

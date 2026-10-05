@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from codeagent.providers.quota_errors import ContextOverflowError, QuotaExhaustedError
+from evals.live_agent import LiveTaskMetrics, run_live_task
 from evals.task_validate import run_check
 
 
@@ -22,6 +24,8 @@ class EvalResult:
     duration_s: float = 0.0
     error: str | None = None
     runs: int = 1
+    model_calls: int = 0
+    search_calls: int = 0
 
 
 @dataclass
@@ -91,6 +95,8 @@ def run_eval(
         state.results = [EvalResult(**row) for row in raw.get("results", [])]
     task_dirs = list_task_dirs(tasks_dir, slice_name=slice_name)
     live_runs = 0
+    live_metrics: list[LiveTaskMetrics] = []
+    quota_exhausted = False
     for task_dir in task_dirs:
         task = load_task(task_dir / "task.yaml")
         task_id = str(task.get("id", task_dir.name))
@@ -98,25 +104,53 @@ def run_eval(
             continue
         if mode == "live" and quota_stop_after is not None and live_runs >= quota_stop_after:
             break
+        if quota_exhausted:
+            break
         for _ in range(max(1, repeats)):
             start = time.monotonic()
             error: str | None = None
+            model_calls = 0
+            search_calls = 0
+            tokens = 0
             if mode == "replay":
-                ok = bool(task.get("reference_transcript")) and run_check(task_dir) == 0
+                task_ok = bool(task.get("reference_transcript")) and run_check(task_dir) == 0
                 if not task.get("reference_transcript"):
                     error = "missing reference_transcript"
+            elif mode == "live":
+                try:
+                    metrics = run_live_task(task_dir)
+                    live_metrics.append(metrics)
+                    task_ok = metrics.ok
+                    error = metrics.error
+                    model_calls = metrics.model_calls
+                    search_calls = metrics.search_calls
+                    tokens = metrics.tokens
+                    live_runs += 1
+                except QuotaExhaustedError:
+                    quota_exhausted = True
+                    task_ok = False
+                    error = "quota_exhausted"
+                    break
+                except ContextOverflowError:
+                    task_ok = False
+                    error = "context_overflow"
+                    live_runs += 1
             else:
-                ok = run_check(task_dir) == 0
-                live_runs += 1
+                task_ok = run_check(task_dir) == 0
             state.results.append(
                 EvalResult(
                     task_id=task_id,
-                    ok=ok,
+                    ok=task_ok,
                     mode=mode,
+                    tokens=tokens,
                     duration_s=time.monotonic() - start,
                     error=error,
+                    model_calls=model_calls,
+                    search_calls=search_calls,
                 )
             )
+            if quota_exhausted:
+                break
         state.completed.add(task_id)
         state_path.write_text(
             json.dumps(
@@ -137,19 +171,28 @@ def run_eval(
         writer.writeheader()
         for row in aggregated:
             writer.writerow(row.__dict__)
-    ok = sum(1 for r in aggregated if r.ok)
+    pass_count = sum(1 for r in aggregated if r.ok)
     total = len(aggregated) or 1
     behind = sum(r.runs for r in aggregated) - total
     (output_dir / "report.md").write_text(
         "\n".join(
             [
                 f"mode: {mode}",
-                f"success rate: {ok}/{total}",
+                f"success rate: {pass_count}/{total}",
                 f"aggregate runs behind rate: {behind}",
                 f"tasks completed: {len(state.completed)}",
+                f"quota_exhausted: {quota_exhausted}",
             ]
         )
         + "\n",
         encoding="utf-8",
     )
+    if mode == "live" and live_metrics:
+        from evals.gate_analysis import assess_gate
+
+        assessment = assess_gate(live_metrics)
+        (output_dir / "gate-assessment.json").write_text(
+            json.dumps(assessment.__dict__, indent=2),
+            encoding="utf-8",
+        )
     return state
