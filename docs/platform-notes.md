@@ -28,4 +28,7 @@ Documented differences between macOS (primary, arm64) and Linux (CI). Tests that
 
 ## Docker
 
-- Optional sandbox (`isolation.mode = "docker"`) is not implemented in Phase 4. See `DESIGN.md` 8.15.
+- Optional sandbox (`isolation.mode = "docker"`) runs `run_command` and `bash` inside
+  a container with `--network none` and a bind-mounted workspace. If Docker is missing,
+  the CLI prints a warning and runs on the host. Git isolation still uses worktree or
+  branch mode. See `DESIGN.md` 8.15 and decision 0009.

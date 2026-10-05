@@ -84,6 +84,13 @@ def _baseline_ref(repo: Path) -> str:
     return _EMPTY_TREE
 
 
+def git_isolation_mode(settings: IsolationSettings) -> str:
+    """Git worktree/branch mode; ``docker`` only affects command execution."""
+    if settings.mode == "branch":
+        return "branch"
+    return "worktree"
+
+
 def begin_isolation(
     git_root: Path,
     run_id: str,
@@ -98,7 +105,7 @@ def begin_isolation(
     branch_name = f"codeagent/{run_id}"
     meta_path = root / ".codeagent" / "runs" / run_id / "session.json"
     user_branch = run_git(root, ["branch", "--show-current"], check=False).stdout.strip()
-    mode = settings.mode
+    mode = git_isolation_mode(settings)
     worktree_path: Path | None = None
     workspace = root
 

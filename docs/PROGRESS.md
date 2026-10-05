@@ -65,7 +65,7 @@ no eval evidence). See decision records 0007 and 0008.
 | P8-F7 | Task batch C (6 tasks) | `test/p8-f5-f7-eval-batches` | merged | [#19](https://github.com/smadduri9/codeagent/pull/19) | `77f406c` |
 | P8-F8 | Demonstration fixture | `feat/p8-f8-payment-demo` | merged | — | `4b22201` |
 | P8-F9 | Baseline run and report | `docs/p8-f9-baseline` | merged | [#22](https://github.com/smadduri9/codeagent/pull/22) | `f76771f` |
-| P8-F10 | Optional Docker sandbox | `feat/p8-f10-docker-sandbox` | skipped | — | [0007](docs/decisions/0007-skip-docker-sandbox.md) |
+| P8-F10 | Optional Docker sandbox | `feat/p8-f10-docker-sandbox` | in-progress | — | [0009](docs/decisions/0009-docker-sandbox-approach.md) |
 | P9-F1 | Scanner and manifest | `feat/p9-f1-scanner` | skipped | — | [0008](docs/decisions/0008-phase-9-gate-not-met.md) |
 | P9-F2 | Symbol extraction | `feat/p9-f2-symbols` | skipped | — | [0008](docs/decisions/0008-phase-9-gate-not-met.md) |
 | P9-F3 | Symbol search tool | `feat/p9-f3-search-symbol` | skipped | — | [0008](docs/decisions/0008-phase-9-gate-not-met.md) |
@@ -82,7 +82,7 @@ no eval evidence). See decision records 0007 and 0008.
 - P8-F5–F7: PR #19; 40-task fixtures, `core12` slice, replay validation tests; 407+ tests green.
 - P8-F8: payment fixture on `main` at `4b22201`; `tests/unit/test_payment_demo.py`.
 - P8-F9: replay baseline under `evals/baselines/replay-40/`; live core12 0/12; gate undetermined per `evals/baselines/gate-conclusion.md`.
-- P8-F10: skipped per decision 0007.
+- P8-F10: skipped per decision 0007; superseded by 0009 implementation on `feat/p8-f10-docker-sandbox`.
 - Phase 9: skipped per decision 0008.
 - P10-F1: skipped (no ablation baseline).
 
