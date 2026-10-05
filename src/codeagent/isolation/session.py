@@ -91,6 +91,14 @@ def git_isolation_mode(settings: IsolationSettings) -> str:
     return "worktree"
 
 
+def finish_isolation(session: IsolationSession) -> str:
+    """Compute the final diff and tear down isolation (releases the run lock)."""
+    try:
+        return session.finish()
+    finally:
+        session.cleanup()
+
+
 def begin_isolation(
     git_root: Path,
     run_id: str,
@@ -102,6 +110,29 @@ def begin_isolation(
     """Create an isolated workspace; user's checkout stays on the original branch."""
     root = git_root.resolve()
     lock = RunLock.acquire(root, run_id)
+    try:
+        return _begin_isolation_locked(
+            root,
+            run_id,
+            settings,
+            lock=lock,
+            on_dirty=on_dirty,
+            force_branch=force_branch,
+        )
+    except Exception:
+        lock.release()
+        raise
+
+
+def _begin_isolation_locked(
+    root: Path,
+    run_id: str,
+    settings: IsolationSettings,
+    *,
+    lock: RunLock,
+    on_dirty: Callable[[str], DirtyTreeChoice] | None = None,
+    force_branch: bool = False,
+) -> IsolationSession:
     branch_name = f"codeagent/{run_id}"
     meta_path = root / ".codeagent" / "runs" / run_id / "session.json"
     user_branch = run_git(root, ["branch", "--show-current"], check=False).stdout.strip()

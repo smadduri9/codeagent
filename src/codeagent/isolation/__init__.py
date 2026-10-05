@@ -8,6 +8,7 @@ from codeagent.isolation.session import (
     IsolationError,
     IsolationSession,
     begin_isolation,
+    finish_isolation,
 )
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "RunLock",
     "RunLockError",
     "begin_isolation",
+    "finish_isolation",
     "format_final_diff",
 ]

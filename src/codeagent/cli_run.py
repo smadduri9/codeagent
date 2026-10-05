@@ -10,7 +10,13 @@ from pydantic import TypeAdapter
 from rich.console import Console
 
 from codeagent.config import ConfigError, find_git_root, load_settings
-from codeagent.isolation.session import DirtyTreeChoice, begin_isolation
+from codeagent.isolation.lock import RunLockError
+from codeagent.isolation.session import (
+    DirtyTreeChoice,
+    IsolationError,
+    begin_isolation,
+    finish_isolation,
+)
 from codeagent.loop import run_agent_loop
 from codeagent.loop.interrupt import InterruptController, install_sigint_handler
 from codeagent.providers.base import ModelEvent
@@ -18,7 +24,7 @@ from codeagent.providers.factory import build_managed_provider
 from codeagent.providers.fake import FakeProvider
 from codeagent.providers.protocol import Provider
 from codeagent.runtime.bootstrap import build_policy_gate, build_system_prompt, build_tool_registry
-from codeagent.state.session import begin_persisted_run, run_with_persistence
+from codeagent.state.session import abort_persisted_run, begin_persisted_run, run_with_persistence
 from codeagent.state.store import StateStore, default_state_db_path
 
 console = Console(stderr=True)
@@ -67,6 +73,8 @@ def run_command(
     install_sigint_handler(interrupt)
     isolation = None
     store: StateStore | None = None
+    ctx = None
+    result = None
 
     try:
         if persist:
@@ -82,7 +90,6 @@ def run_command(
 
         workspace = repo_root
         run_id: str | None = None
-        ctx = None
         if persist:
             assert store is not None
             ctx = begin_persisted_run(
@@ -108,12 +115,21 @@ def run_command(
                         return DirtyTreeChoice.PROCEED
                 return DirtyTreeChoice.ABORT
 
-            isolation = begin_isolation(
-                repo_root,
-                run_id,
-                settings.isolation,
-                on_dirty=on_dirty if interactive else None,
-            )
+            try:
+                isolation = begin_isolation(
+                    repo_root,
+                    run_id,
+                    settings.isolation,
+                    on_dirty=on_dirty if interactive else None,
+                )
+            except RunLockError as exc:
+                abort_persisted_run(ctx, "isolation_lock")
+                console.print(f"[bold red]error[/bold red]: {exc}")
+                raise typer.Exit(code=1) from exc
+            except IsolationError as exc:
+                abort_persisted_run(ctx, "isolation_failed")
+                console.print(f"[bold red]error[/bold red]: {exc}")
+                raise typer.Exit(code=1) from exc
             workspace = isolation.workspace
 
         registry = build_tool_registry(
@@ -163,14 +179,16 @@ def run_command(
                 interrupt=interrupt,
             )
     finally:
+        if isolation is not None:
+            diff = finish_isolation(isolation)
+            if diff.strip():
+                console.print("[bold]final diff[/bold]:")
+                console.print(diff)
         if store is not None:
             store.close()
 
-    if isolation is not None:
-        diff = isolation.finish()
-        if diff.strip():
-            console.print("[bold]final diff[/bold]:")
-            console.print(diff)
+    if result is None:
+        raise typer.Exit(code=1)
 
     console.print(f"[bold]stop[/bold]: {result.stop_reason}")
     console.print(f"[bold]iterations[/bold]: {result.iterations}")

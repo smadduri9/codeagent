@@ -43,6 +43,11 @@ class PersistedRunContext:
     budget: BudgetTracker
 
 
+def abort_persisted_run(ctx: PersistedRunContext, stop_reason: str) -> None:
+    """Mark a run failed when setup cannot continue (e.g. isolation lock held)."""
+    ctx.recorder.finish(RunPhase.FAILED, stop_reason)
+
+
 def begin_persisted_run(
     store: StateStore,
     *,
