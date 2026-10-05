@@ -49,7 +49,7 @@ def test_persisted_run_writes_trace_events(tmp_path: Path) -> None:
         repo_root=tmp_path,
         goal="trace me",
         model="m",
-        settings=__import__("codeagent.config", fromlist=["Settings"]).Settings(),
+        settings=Settings(),
     )
     registry = ToolRegistry()
     result = run_with_persistence(
