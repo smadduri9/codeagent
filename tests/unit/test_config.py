@@ -21,8 +21,11 @@ def write_config(directory: Path, contents: str) -> None:
     (directory / "config.toml").write_text(contents)
 
 
-def test_missing_files_use_documented_defaults(paths: tuple[Path, Path]) -> None:
+def test_missing_files_use_documented_defaults(
+    paths: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     repo, user = paths
+    monkeypatch.delenv("CODEAGENT_MODEL", raising=False)
     settings = load_settings(repo, user_dir=user)
     assert settings.model.main is None
     assert settings.model.cheap is None
@@ -40,6 +43,32 @@ def test_missing_files_use_documented_defaults(paths: tuple[Path, Path]) -> None
     assert settings.tools.instructions_max_tokens == 1500
     # No rate or price can be silently invented for an unconfigured model.
     assert all(field.is_required() for field in Price.model_fields.values())
+
+
+def test_codeagent_model_from_process_env(
+    paths: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, user = paths
+    monkeypatch.setenv("CODEAGENT_MODEL", "env-model")
+    settings = load_settings(repo, user_dir=user)
+    assert settings.model.main == "env-model"
+
+
+def test_codeagent_model_from_repo_dotenv(paths: tuple[Path, Path]) -> None:
+    repo, user = paths
+    (repo / ".env").write_text('CODEAGENT_MODEL="dotenv-model"\n')
+    settings = load_settings(repo, user_dir=user)
+    assert settings.model.main == "dotenv-model"
+
+
+def test_toml_main_wins_over_codeagent_model(
+    paths: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, user = paths
+    write_config(repo / ".codeagent", '[model]\nmain="toml-model"')
+    monkeypatch.setenv("CODEAGENT_MODEL", "env-model")
+    settings = load_settings(repo, user_dir=user)
+    assert settings.model.main == "toml-model"
 
 
 def test_each_layer_overrides_only_supplied_fields(paths: tuple[Path, Path]) -> None:
