@@ -23,16 +23,16 @@ On github.com, open **Settings** for the repo and confirm the **About** section 
 2. Push to `main` with `.github/workflows/pages.yml` and the `site/` directory. The workflow deploys on changes under `site/`.
 3. After the first successful run, the site is at https://smadduri9.github.io/codeagent/
 
-If the Actions job stays queued or you see a 404, use the **docs folder** fallback (GitHub only allows `/` or `/docs` for branch-based Pages):
+If the Actions job stays queued or you see a 404, publish from the **repository root** (GitHub allows `/` or `/docs` for branch-based Pages). Root [index.html](../index.html) plus [.nojekyll](../.nojekyll) serves the landing page and links static assets under `docs/demo/`:
 
 ```bash
 gh api --method PUT repos/smadduri9/codeagent/pages \
   -f 'source[branch]=main' \
-  -f 'source[path]=/docs'
+  -f 'source[path]=/'
 gh api --method POST repos/smadduri9/codeagent/pages/builds
 ```
 
-The public landing page is [docs/index.html](index.html) with [docs/.nojekyll](.nojekyll) so Jekyll does not strip assets. Keep [site/](site/) in sync with `docs/index.html` and `docs/styles.css` when you change the landing page, or rely on Actions once it deploys successfully.
+[docs/index.html](index.html) mirrors the same content for browsing under `/docs/` when that path is used. Keep [site/](../site/) in sync when you change the landing page, or rely on Actions once it deploys successfully.
 
 ## Branch protection (optional, owner)
 

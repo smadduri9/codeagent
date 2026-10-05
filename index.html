@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CodeAgent: a local CLI autonomous coding agent with deterministic permissions, verification, and evaluation.">
+  <title>CodeAgent</title>
+  <link rel="stylesheet" href="docs/styles.css">
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>CodeAgent</h1>
+      <p class="tagline">
+        A local, CLI-based autonomous coding agent. The model reasons; deterministic software
+        searches, executes, constrains, verifies, persists, and observes.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/smadduri9/codeagent">View on GitHub</a>
+        <a class="btn" href="#demo">Watch demo</a>
+        <a class="btn" href="docs/OPERATOR.md">Operator guide</a>
+      </div>
+    </header>
+
+    <section id="capabilities">
+      <h2>Capabilities</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>Tool-calling loop</strong>
+          <p>Native provider tool calls with iteration, repeat, and budget guards.</p>
+        </div>
+        <div class="card">
+          <strong>Permission engine</strong>
+          <p>Table-driven allow, ask, and deny before execution; single-use approvals.</p>
+        </div>
+        <div class="card">
+          <strong>Isolation</strong>
+          <p>Git worktree by default, checkpoints, rollback, and optional Docker sandbox.</p>
+        </div>
+        <div class="card">
+          <strong>Verification</strong>
+          <p>Checks pipeline and completion gate; no verified finish without evidence.</p>
+        </div>
+        <div class="card">
+          <strong>Durable runs</strong>
+          <p>SQLite state, resume after interrupt or quota wait, full event trace.</p>
+        </div>
+        <div class="card">
+          <strong>Evaluation</strong>
+          <p>40-task suite with scripted replay in CI and quota-aware live slices.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo">
+      <h2>Demo</h2>
+      <p>Terminal recording from a live agent session.</p>
+      <video
+        class="demo-video"
+        src="docs/demo/terminal.mp4"
+        poster="docs/demo/terminal-poster.jpg"
+        controls
+        playsinline
+        loop
+        muted
+      ></video>
+      <p><a href="docs/demo/terminal.mp4">Download MP4</a></p>
+    </section>
+
+    <section id="architecture">
+      <h2>Architecture</h2>
+      <p>Dependencies point downward: the loop orchestrates; tools do not call back into it.</p>
+      <pre class="mermaid">
+flowchart TB
+  CLI[CLI_Typer_Rich]
+  Loop[AgentLoop]
+  Provider[Provider]
+  Tools[ToolRegistry]
+  Perm[PermissionEngine]
+  State[StateStore]
+  Iso[Isolation]
+  Verify[Verification]
+  Obs[Observability]
+
+  CLI --> Loop
+  Loop --> Provider
+  Loop --> Tools
+  Loop --> Perm
+  Loop --> State
+  Loop --> Iso
+  Loop --> Verify
+  Loop --> Obs
+  Tools --> Perm
+      </pre>
+      <p>
+        Full specification:
+        <a href="https://github.com/smadduri9/codeagent/blob/main/DESIGN.md">DESIGN.md</a>
+      </p>
+    </section>
+
+    <section id="engineering">
+      <h2>Engineering</h2>
+      <ul>
+        <li>Safety decisions are deterministic, not delegated to the model (DESIGN D4).</li>
+        <li>Tool and file output is untrusted and cannot change permission rules.</li>
+        <li>Stable system prompt and tool definitions per run; compaction appends history (D9).</li>
+        <li>Main and cheap model routing for internal vs editing calls (D12).</li>
+        <li>Groq free-tier pacing: rate limits, quota headers, WAITING_QUOTA with resume.</li>
+      </ul>
+      <p>
+        Python 3.12, strict mypy, Ruff, pytest on Ubuntu and macOS.
+        442 offline pytest cases in CI (live excluded), including a dedicated security suite.
+      </p>
+    </section>
+
+    <section id="evaluation">
+      <h2>Evaluation</h2>
+      <p>Two tiers: scripted replay (zero tokens, CI) and live slices (quota-aware).</p>
+      <table class="stats">
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Result</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Replay (40 tasks + smoke)</td>
+            <td>42 / 42 pass</td>
+            <td>Real loop, tools, permissions via FakeProvider</td>
+          </tr>
+          <tr>
+            <td>Live core12</td>
+            <td>Partial (2 of 12 tasks)</td>
+            <td>Model quality under free-tier limits; not a full live score</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Baselines:
+        <a href="https://github.com/smadduri9/codeagent/tree/main/evals/baselines">evals/baselines/</a>.
+        Repository indexing (phase 9) was skipped because the DESIGN 9.1 gate was not met;
+        <a href="docs/decisions/0008-phase-9-gate-not-met.md">decision 0008</a>.
+      </p>
+    </section>
+
+    <section id="decisions">
+      <h2>Scope</h2>
+      <p>
+        Built through phase 8 (initial release). Tuned for small repositories and Groq free-tier
+        context and quota limits. Agentic search with grep, glob, and read_file; no code index until
+        evaluation data justifies it.
+      </p>
+      <p>
+        <a href="docs/decisions/">Decision records</a>
+        ·
+        <a href="docs/PROGRESS.md">Build progress</a>
+        ·
+        <a href="docs/README.md">Documentation index</a>
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        MIT License. Copyright 2026 Sriram Madduri.
+        <a href="https://github.com/smadduri9/codeagent">github.com/smadduri9/codeagent</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
