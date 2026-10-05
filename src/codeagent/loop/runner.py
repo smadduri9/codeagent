@@ -2,13 +2,22 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
+from pathlib import Path
 
 from codeagent.lifecycle import LifecycleState, RunPhase
+from codeagent.loop.budget import (
+    BudgetTracker,
+    ExhaustionReport,
+    build_exhaustion_report,
+)
 from codeagent.loop.completion_gate import CompletionGate, GateAction
 from codeagent.loop.guards import LoopGuards
+from codeagent.loop.interrupt import InterruptController
+from codeagent.loop.limits import RunLimits
 from codeagent.loop.policy import PolicyGate
 from codeagent.permissions.types import is_allow
 from codeagent.providers.base import (
@@ -20,6 +29,8 @@ from codeagent.providers.base import (
 )
 from codeagent.providers.protocol import Provider
 from codeagent.providers.stream import collect_stream
+from codeagent.state.recorder import RunRecorder, ToolTimer
+from codeagent.state.store import StateStore
 from codeagent.tools.registry import ToolRegistry, ToolValidationError, UnknownToolError
 from codeagent.tools.truncate import truncate_content
 
@@ -38,6 +49,9 @@ class RunResult:
     history: list[Message] = field(default_factory=list)
     guard_warning: str | None = None
     policy: PolicyGate | None = None
+    run_id: str | None = None
+    exhaustion_report: ExhaustionReport | None = None
+    resume_warnings: list[str] = field(default_factory=list)
 
 
 def run_agent_loop(
@@ -53,67 +67,147 @@ def run_agent_loop(
     decide: Callable[[ToolCall], PermissionDecision] | None = None,
     policy: PolicyGate | None = None,
     completion_gate: CompletionGate | None = None,
+    store: StateStore | None = None,
+    run_id: str | None = None,
+    repo_root: Path | None = None,
+    history: list[Message] | None = None,
+    lifecycle: LifecycleState | None = None,
+    recorder: RunRecorder | None = None,
+    limits: RunLimits | None = None,
+    budget: BudgetTracker | None = None,
+    interrupt: InterruptController | None = None,
+    resume_warnings: list[str] | None = None,
 ) -> RunResult:
-    lifecycle = LifecycleState()
-    lifecycle.transition(RunPhase.WORKING)
+    del store, repo_root
+    lifecycle_state = lifecycle or LifecycleState()
+    if lifecycle_state.phase is RunPhase.INITIALIZING:
+        lifecycle_state.transition(RunPhase.WORKING)
+        if recorder is not None:
+            recorder.on_phase(RunPhase.WORKING)
+
+    if limits is not None and budget is None:
+        budget = BudgetTracker(limits=limits)
+
     guards = LoopGuards(max_iterations=max_iterations)
-    history: list[Message] = [Message(role=MessageRole.USER, content=goal)]
+    chat_history: list[Message] = (
+        list(history) if history is not None else [Message(role=MessageRole.USER, content=goal)]
+    )
     legacy_decide = decide or (lambda _call: PermissionDecision.ALLOW)
     guard_warning: str | None = None
+    warnings = list(resume_warnings or [])
+    changed_files: list[str] = []
     gate = completion_gate or CompletionGate()
+
+    if policy is not None and recorder is not None:
+        policy.on_record = recorder.on_decision
+
+    def _finish(
+        phase: RunPhase,
+        stop_reason: str,
+        *,
+        exhaustion: bool = False,
+        resumable: bool = False,
+    ) -> RunResult:
+        exhaustion_report: ExhaustionReport | None = None
+        if exhaustion:
+            exhaustion_report = build_exhaustion_report(
+                goal=goal,
+                stop_reason=stop_reason,
+                iterations=guards.state.iterations,
+                tool_calls=budget.tool_calls if budget is not None else 0,
+                changed_files=changed_files,
+            )
+        if recorder is not None:
+            recorder.on_phase(phase)
+            recorder.finish(phase, stop_reason, resumable=resumable)
+        return RunResult(
+            stop_reason=stop_reason,
+            iterations=guards.state.iterations,
+            history=chat_history,
+            guard_warning=guard_warning,
+            policy=policy,
+            run_id=run_id,
+            exhaustion_report=exhaustion_report,
+            resume_warnings=warnings,
+        )
 
     while True:
         guard = guards.on_iteration_start()
         if guard.stop:
-            lifecycle.transition(RunPhase.STOPPED)
-            return RunResult(
-                stop_reason=guard.reason.value if guard.reason else "stopped",
-                iterations=guards.state.iterations,
-                history=history,
-                guard_warning=guard_warning,
-                policy=policy,
+            lifecycle_state.transition(RunPhase.STOPPED)
+            return _finish(
+                RunPhase.STOPPED,
+                guard.reason.value if guard.reason else "stopped",
             )
+
+        if budget is not None:
+            budget_guard = budget.check()
+            if budget_guard.stop:
+                lifecycle_state.transition(RunPhase.STOPPED)
+                return _finish(
+                    RunPhase.STOPPED,
+                    budget_guard.reason.value if budget_guard.reason else "budget_exhausted",
+                    exhaustion=True,
+                    resumable=True,
+                )
 
         request = ModelRequest(
             system=system,
-            messages=history,
+            messages=chat_history,
             tools=registry.list_specs(),
             model=model,
             max_output_tokens=max_output_tokens,
         )
+        started = time.perf_counter()
         reply = collect_stream(provider.stream(request))
+        latency_ms = int((time.perf_counter() - started) * 1000)
+
+        if budget is not None and reply.usage is not None:
+            budget.add_usage(reply.usage)
+            budget_guard = budget.check()
+            if budget_guard.stop:
+                lifecycle_state.transition(RunPhase.STOPPED)
+                return _finish(
+                    RunPhase.STOPPED,
+                    budget_guard.reason.value if budget_guard.reason else "budget_exhausted",
+                    exhaustion=True,
+                    resumable=True,
+                )
+
         assistant = Message(
             role=MessageRole.ASSISTANT,
             content=reply.content or None,
             tool_calls=reply.tool_calls,
         )
-        history.append(assistant)
+        chat_history.append(assistant)
+
+        step_cost = budget.cost_usd if budget is not None else 0.0
+        if recorder is not None:
+            recorder.on_assistant_step(
+                assistant,
+                reply.usage,
+                cost_usd=step_cost,
+                latency_ms=latency_ms,
+            )
+
+        if interrupt is not None and interrupt.should_stop_after_model():
+            interrupt.clear_graceful()
+            lifecycle_state.transition(RunPhase.STOPPED)
+            return _finish(RunPhase.STOPPED, "interrupt", exhaustion=True, resumable=True)
 
         if not reply.tool_calls:
             action = gate.on_model_stop()
             if action is GateAction.PROMPT_VERIFY:
-                history.append(
+                chat_history.append(
                     Message(role=MessageRole.USER, content=CompletionGate.prompt_message())
                 )
                 continue
             if action is GateAction.COMPLETE_UNVERIFIED:
-                lifecycle.transition(RunPhase.COMPLETED_UNVERIFIED)
-                return RunResult(
-                    stop_reason="completed_unverified",
-                    iterations=guards.state.iterations,
-                    history=history,
-                    guard_warning=guard_warning,
-                    policy=policy,
-                )
-            lifecycle.transition(RunPhase.COMPLETED)
+                lifecycle_state.transition(RunPhase.COMPLETED_UNVERIFIED)
+                return _finish(RunPhase.COMPLETED_UNVERIFIED, "completed_unverified")
+            lifecycle_state.transition(RunPhase.COMPLETED)
             reason = reply.stop_reason.value if reply.stop_reason else StopReason.STOP.value
-            return RunResult(
-                stop_reason=reason,
-                iterations=guards.state.iterations,
-                history=history,
-                guard_warning=guard_warning,
-                policy=policy,
-            )
+            return _finish(RunPhase.COMPLETED, reason)
 
         tool_messages: list[Message] = []
         for call in reply.tool_calls:
@@ -121,13 +215,10 @@ def run_agent_loop(
             if repeat.warning and guard_warning is None:
                 guard_warning = repeat.warning
             if repeat.stop:
-                lifecycle.transition(RunPhase.STOPPED)
-                return RunResult(
-                    stop_reason=repeat.reason.value if repeat.reason else "stopped",
-                    iterations=guards.state.iterations,
-                    history=history,
-                    guard_warning=guard_warning,
-                    policy=policy,
+                lifecycle_state.transition(RunPhase.STOPPED)
+                return _finish(
+                    RunPhase.STOPPED,
+                    repeat.reason.value if repeat.reason else "stopped",
                 )
 
             if policy is not None:
@@ -140,6 +231,13 @@ def run_agent_loop(
                             deny_message or "denied",
                         ),
                     )
+                    if recorder is not None:
+                        recorder.complete_tool(
+                            call,
+                            ok=False,
+                            result_content=content,
+                            duration_ms=0,
+                        )
                     tool_messages.append(
                         Message(
                             role=MessageRole.TOOL,
@@ -149,23 +247,40 @@ def run_agent_loop(
                         ),
                     )
                     if denial.stop:
-                        lifecycle.transition(RunPhase.STOPPED)
-                        return RunResult(
-                            stop_reason=denial.reason.value if denial.reason else "stopped",
-                            iterations=guards.state.iterations,
-                            history=history + tool_messages,
-                            guard_warning=guard_warning,
-                            policy=policy,
+                        lifecycle_state.transition(RunPhase.STOPPED)
+                        chat_history.extend(tool_messages)
+                        return _finish(
+                            RunPhase.STOPPED,
+                            denial.reason.value if denial.reason else "stopped",
                         )
                     continue
 
+                if interrupt is not None and interrupt.should_stop_before_tool():
+                    lifecycle_state.transition(RunPhase.STOPPED)
+                    return _finish(
+                        RunPhase.STOPPED,
+                        "interrupt",
+                        exhaustion=True,
+                        resumable=True,
+                    )
+
                 guards.on_allow()
+                timer = ToolTimer()
                 result = policy.execute_allowed(call, decision)
                 body, _truncated = truncate_content(
                     policy.wrap_result(result),
                     max_output_chars,
                     keep="tail",
                 )
+                if recorder is not None:
+                    recorder.complete_tool(
+                        call,
+                        ok=result.ok,
+                        result_content=body,
+                        duration_ms=timer.elapsed_ms(),
+                    )
+                if budget is not None:
+                    budget.on_tool_completed()
                 tool_messages.append(
                     Message(
                         role=MessageRole.TOOL,
@@ -174,10 +289,31 @@ def run_agent_loop(
                         name=call.name,
                     ),
                 )
+                if interrupt is not None and (
+                    interrupt.should_stop_after_current_tool()
+                    or interrupt.should_stop_before_tool()
+                ):
+                    interrupt.clear_graceful()
+                    lifecycle_state.transition(RunPhase.STOPPED)
+                    chat_history.extend(tool_messages)
+                    return _finish(
+                        RunPhase.STOPPED,
+                        "interrupt",
+                        exhaustion=True,
+                        resumable=True,
+                    )
                 continue
 
             legacy = legacy_decide(call)
             if legacy is PermissionDecision.DENY:
+                if recorder is not None:
+                    recorder.record_legacy_decision(call, allowed=False)
+                    recorder.complete_tool(
+                        call,
+                        ok=False,
+                        result_content=f"denied: {call.name}",
+                        duration_ms=0,
+                    )
                 denial = guards.on_denial()
                 content = f"denied: {call.name}"
                 tool_messages.append(
@@ -189,26 +325,49 @@ def run_agent_loop(
                     ),
                 )
                 if denial.stop:
-                    lifecycle.transition(RunPhase.STOPPED)
-                    return RunResult(
-                        stop_reason=denial.reason.value if denial.reason else "stopped",
-                        iterations=guards.state.iterations,
-                        history=history + tool_messages,
-                        guard_warning=guard_warning,
-                        policy=policy,
+                    lifecycle_state.transition(RunPhase.STOPPED)
+                    chat_history.extend(tool_messages)
+                    return _finish(
+                        RunPhase.STOPPED,
+                        denial.reason.value if denial.reason else "stopped",
                     )
                 continue
 
+            if recorder is not None:
+                recorder.record_legacy_decision(call, allowed=True)
+
+            if interrupt is not None and interrupt.should_stop_before_tool():
+                lifecycle_state.transition(RunPhase.STOPPED)
+                return _finish(
+                    RunPhase.STOPPED,
+                    "interrupt",
+                    exhaustion=True,
+                    resumable=True,
+                )
+
             guards.on_allow()
+            timer = ToolTimer()
             try:
                 result = registry.run(call)
             except (ToolValidationError, UnknownToolError) as exc:
                 result = registry.tool_error(call, str(exc))
             if call.name in {"write_file", "edit_file"} and result.ok:
                 gate.note_edit()
+                path_arg = call.args.get("path")
+                if isinstance(path_arg, str):
+                    changed_files.append(path_arg)
             if call.name in {"run_verification", "run_tests"} and result.ok:
                 gate.note_verification_pass()
             body, _truncated = truncate_content(result.content, max_output_chars, keep="tail")
+            if recorder is not None:
+                recorder.complete_tool(
+                    call,
+                    ok=result.ok,
+                    result_content=body,
+                    duration_ms=timer.elapsed_ms(),
+                )
+            if budget is not None:
+                budget.on_tool_completed()
             tool_messages.append(
                 Message(
                     role=MessageRole.TOOL,
@@ -217,4 +376,17 @@ def run_agent_loop(
                     name=call.name,
                 ),
             )
-        history.extend(tool_messages)
+            if interrupt is not None and (
+                interrupt.should_stop_after_current_tool() or interrupt.should_stop_before_tool()
+            ):
+                interrupt.clear_graceful()
+                lifecycle_state.transition(RunPhase.STOPPED)
+                chat_history.extend(tool_messages)
+                return _finish(
+                    RunPhase.STOPPED,
+                    "interrupt",
+                    exhaustion=True,
+                    resumable=True,
+                )
+
+        chat_history.extend(tool_messages)
