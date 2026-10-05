@@ -23,7 +23,7 @@ Step-by-step instructions for running CodeAgent on any GitHub repository with Gr
    - **Minimal (`.env` only):** in the repository root `.env` (gitignored), set both:
 
      ```env
-     GROQ_API_KEY=your-key
+     GROQ_API_KEY=...
      CODEAGENT_MODEL=your-groq-model-id
      ```
 
