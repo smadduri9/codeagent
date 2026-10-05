@@ -16,6 +16,18 @@ class ConfigError(ValueError):
     """Configuration cannot be used; diagnostics must not include values."""
 
 
+CODEAGENT_MODEL_ENV = "CODEAGENT_MODEL"
+
+MISSING_MAIN_MODEL_MESSAGE = (
+    "No model configured for a live run. Set [model].main in "
+    "~/.codeagent/config.toml or <repo>/.codeagent/config.toml, "
+    f"or set {CODEAGENT_MODEL_ENV} in the environment or a .env file "
+    "(same search order as the API key). Example:\n"
+    "[model]\n"
+    'main = "your-groq-model-id"'
+)
+
+
 class ConfigModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
 
@@ -189,10 +201,19 @@ def load_settings(
         data = _merge(data, _read_toml(path))
     data = _merge(data, overrides or {})
     try:
-        return Settings.model_validate(data)
+        settings = Settings.model_validate(data)
     except ValidationError:
         # Never include input values (or arbitrary user-provided field names).
         raise ConfigError("Invalid configuration: check keys, types, and value ranges") from None
+    if settings.model.main is None:
+        from codeagent.config_secrets import resolve_env_value
+
+        model_override = resolve_env_value(CODEAGENT_MODEL_ENV, start_dir, user_dir=home)
+        if model_override is not None:
+            settings = settings.model_copy(
+                update={"model": settings.model.model_copy(update={"main": model_override})}
+            )
+    return settings
 
 
 def apply_profile(settings: Settings) -> Settings:

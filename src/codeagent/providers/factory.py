@@ -7,7 +7,7 @@ from pathlib import Path
 from openai import OpenAI
 from pydantic import SecretStr
 
-from codeagent.config import ConfigError, Settings
+from codeagent.config import MISSING_MAIN_MODEL_MESSAGE, ConfigError, Settings
 from codeagent.config_secrets import load_api_key
 from codeagent.providers.managed import ManagedProvider
 from codeagent.providers.openai_compatible import OpenAICompatibleProvider
@@ -17,7 +17,7 @@ from codeagent.state.store import StateStore
 def resolve_model_name(settings: Settings) -> str:
     if settings.model.main:
         return settings.model.main
-    raise ConfigError("Set [model].main in config.toml before a live run")
+    raise ConfigError(MISSING_MAIN_MODEL_MESSAGE)
 
 
 def _openai_client(base_url: str, secret: SecretStr) -> OpenAI:

@@ -18,28 +18,37 @@ Step-by-step instructions for running CodeAgent on any GitHub repository with Gr
    cd your-project
    ```
 
-2. Create configuration (merge with defaults):
+2. Choose a Groq model id (from your Groq console) and configure it **one** of these ways:
 
-   ```bash
-   mkdir -p .codeagent
-   ```
+   - **Minimal (`.env` only):** in the repository root `.env` (gitignored), set both:
 
-   Edit `.codeagent/config.toml`:
+     ```env
+     GROQ_API_KEY=your-key
+     CODEAGENT_MODEL=your-groq-model-id
+     ```
 
-   ```toml
-   [model]
-   main = "llama-3.3-70b-versatile"   # pin a Groq model id from your account
+     `CODEAGENT_MODEL` uses the same lookup order as the API key: process environment,
+     then `<repo>/.env`, then `~/.codeagent/.env`.
 
-   [limits]
-   max_iterations = 20
-   ```
+   - **Config file:** create `.codeagent/config.toml` (merged with `~/.codeagent/config.toml`):
 
-3. Put your API key where the loader expects it (pick one):
+     ```toml
+     [model]
+     main = "your-groq-model-id"
+
+     [limits]
+     max_iterations = 20
+     ```
+
+   If neither `model.main` nor `CODEAGENT_MODEL` is set, live runs fail with a message
+   listing these paths and an example snippet.
+
+3. Put your API key where the loader expects it if you did not add it to `.env` above:
 
    - Export `GROQ_API_KEY` in your shell, **or**
    - Add `GROQ_API_KEY=...` to `.env` in the repository root (gitignored).
 
-4. Optional: detect verification commands:
+4. Optional: detect verification commands and append a commented `[model]` template:
 
    ```bash
    codeagent init
@@ -104,7 +113,7 @@ Stops when daily quota is exhausted; results under `evals/baselines/live-core12/
 
 ## Recommended first local command
 
-After configuring `model.main` and your Groq key:
+After configuring a model (`model.main` or `CODEAGENT_MODEL`) and your Groq key:
 
 ```bash
 cd your-project

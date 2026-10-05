@@ -11,7 +11,7 @@ from codeagent.providers.factory import build_managed_provider, resolve_model_na
 
 
 def test_resolve_model_name_requires_main() -> None:
-    with pytest.raises(ConfigError):
+    with pytest.raises(ConfigError, match="~/.codeagent/config.toml"):
         resolve_model_name(Settings())
 
 

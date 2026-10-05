@@ -34,6 +34,29 @@ def _read_key(path: Path, variable: str) -> str | None:
     return None
 
 
+def resolve_env_value(
+    variable: str,
+    start_dir: Path,
+    *,
+    user_dir: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> str | None:
+    """Resolve a variable from the process environment, then git-root and user `.env` files."""
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", variable):
+        raise ConfigError("Invalid environment variable name")
+    environment = os.environ if environ is None else environ
+    value = environment.get(variable)
+    if value and value.strip():
+        return value.strip()
+    root = find_git_root(start_dir)
+    home = user_dir if user_dir is not None else Path.home() / ".codeagent"
+    for path in (root / ".env", home / ".env"):
+        value = _read_key(path, variable)
+        if value is not None:
+            return value
+    return None
+
+
 def load_api_key(
     api_key_env: str,
     start_dir: Path,
@@ -42,16 +65,9 @@ def load_api_key(
     environ: Mapping[str, str] | None = None,
 ) -> SecretStr:
     """Resolve process, git-root, then user key; never export or interpolate it."""
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", api_key_env):
-        raise ConfigError("Invalid API-key environment variable name")
-    environment = os.environ if environ is None else environ
-    value = environment.get(api_key_env)
-    if value and value.strip():
-        return SecretStr(value)
-    root = find_git_root(start_dir)
-    home = user_dir if user_dir is not None else Path.home() / ".codeagent"
-    for path in (root / ".env", home / ".env"):
-        value = _read_key(path, api_key_env)
-        if value is not None:
-            return SecretStr(value)
-    raise ConfigError(f"Missing API key: set {api_key_env} in the environment or an API-key file")
+    value = resolve_env_value(api_key_env, start_dir, user_dir=user_dir, environ=environ)
+    if value is None:
+        raise ConfigError(
+            f"Missing API key: set {api_key_env} in the environment or an API-key file"
+        )
+    return SecretStr(value)
