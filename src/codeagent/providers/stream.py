@@ -1,6 +1,6 @@
 """Collect streaming provider events into a single model reply."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from json import loads
 
@@ -26,16 +26,25 @@ class ModelReply:
     stop_reason: StopReason | None = None
 
 
-def collect_stream(events: Iterator[ModelEvent]) -> ModelReply:
+def collect_stream(
+    events: Iterator[ModelEvent],
+    *,
+    on_text_delta: Callable[[str], None] | None = None,
+    on_tool_announced: Callable[[str], None] | None = None,
+) -> ModelReply:
     reply = ModelReply()
     pending_args: dict[str, str] = {}
     pending_names: dict[str, str] = {}
     for event in events:
         if isinstance(event, TextDelta):
             reply.content += event.text
+            if on_text_delta is not None and event.text:
+                on_text_delta(event.text)
         elif isinstance(event, ToolCallStart):
             pending_names[event.id] = event.name
             pending_args.setdefault(event.id, "")
+            if on_tool_announced is not None:
+                on_tool_announced(event.name)
         elif isinstance(event, ToolCallArgsDelta):
             pending_args[event.id] = pending_args.get(event.id, "") + event.delta
         elif isinstance(event, ToolCallEnd):

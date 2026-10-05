@@ -70,13 +70,39 @@ Step-by-step instructions for running CodeAgent on any GitHub repository with Gr
    codeagent init
    ```
 
-## Run the agent
+## Start chatting (interactive)
+
+From any Git repository (after model and API key are configured):
+
+```bash
+cd your-project
+codeagent
+```
+
+The same session is available as an explicit subcommand:
+
+```bash
+codeagent chat
+```
+
+On first launch, CodeAgent creates `.codeagent/config.toml` with detected verification
+commands (similar to `codeagent init`). Type a goal at the `you` prompt; streamed model
+text and tool activity appear as the run progresses, then the final **answer** block.
+Send another goal to continue the conversation, or leave with `exit`, `quit`, `/exit`, or
+Ctrl+D.
+
+Use `-y` / `--yes` to auto-approve Ask-tier tools in chat mode.
+
+## Run the agent (one-shot)
 
 From the repository root:
 
 ```bash
 codeagent run "Describe your task in plain language" --persist
 ```
+
+One-shot runs also stream model output to the terminal and print a final **answer** when
+the assistant ends with text.
 
 - `--persist` saves the run to SQLite (`.codeagent/state.db`), writes a trace to
   `.codeagent/traces/<run_id>.jsonl` and the `events` table, creates a git worktree
@@ -149,6 +175,12 @@ After configuring a model (`model.main` or `CODEAGENT_MODEL`) and your Groq key:
 
 ```bash
 cd your-project
+codeagent
+```
+
+Or for a single non-interactive goal with persistence:
+
+```bash
 codeagent run "List the top-level files and summarize the project in three bullets" --persist
 ```
 

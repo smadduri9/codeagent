@@ -18,6 +18,7 @@ from codeagent.loop.completion_gate import CompletionGate, GateAction
 from codeagent.loop.guards import LoopGuards
 from codeagent.loop.interrupt import InterruptController
 from codeagent.loop.limits import RunLimits
+from codeagent.loop.observers import NullRunOutputObserver, RunOutputObserver
 from codeagent.loop.policy import PolicyGate
 from codeagent.permissions.types import is_allow
 from codeagent.providers.base import (
@@ -77,6 +78,7 @@ def run_agent_loop(
     budget: BudgetTracker | None = None,
     interrupt: InterruptController | None = None,
     resume_warnings: list[str] | None = None,
+    output: RunOutputObserver | None = None,
 ) -> RunResult:
     del store, repo_root
     lifecycle_state = lifecycle or LifecycleState()
@@ -97,6 +99,7 @@ def run_agent_loop(
     warnings = list(resume_warnings or [])
     changed_files: list[str] = []
     gate = completion_gate or CompletionGate()
+    sink = output if output is not None else NullRunOutputObserver()
 
     if policy is not None and recorder is not None:
         policy.on_record = recorder.on_decision
@@ -170,7 +173,12 @@ def run_agent_loop(
             max_output_tokens=max_output_tokens,
         )
         started = time.perf_counter()
-        reply = collect_stream(provider.stream(request))
+        reply = collect_stream(
+            provider.stream(request),
+            on_text_delta=sink.on_text_delta,
+            on_tool_announced=sink.on_tool_announced,
+        )
+        sink.on_model_turn_end()
         latency_ms = int((time.perf_counter() - started) * 1000)
 
         if recorder is not None:
@@ -304,8 +312,10 @@ def run_agent_loop(
                         "tool.started",
                         {"tool": call.name, "call_id": call.id},
                     )
+                sink.on_tool_start(call.name)
                 timer = ToolTimer()
                 result = policy.execute_allowed(call, decision)
+                sink.on_tool_end(call.name, result.ok)
                 body, _truncated = truncate_content(
                     policy.wrap_result(result),
                     max_output_chars,
@@ -390,11 +400,13 @@ def run_agent_loop(
                     "tool.started",
                     {"tool": call.name, "call_id": call.id},
                 )
+            sink.on_tool_start(call.name)
             timer = ToolTimer()
             try:
                 result = registry.run(call)
             except (ToolValidationError, UnknownToolError) as exc:
                 result = registry.tool_error(call, str(exc))
+            sink.on_tool_end(call.name, result.ok)
             if call.name in {"write_file", "edit_file"} and result.ok:
                 gate.note_edit()
                 path_arg = call.args.get("path")

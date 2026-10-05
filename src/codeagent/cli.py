@@ -2,6 +2,7 @@
 
 import typer
 
+from codeagent.cli_chat import chat_command
 from codeagent.cli_eval import eval_command
 from codeagent.cli_init import init_command
 from codeagent.cli_resume import resume_command
@@ -13,16 +14,19 @@ from codeagent.cli_trace import trace_command
 
 app = typer.Typer(
     help="A local coding agent with deterministic permissions and verification.",
-    no_args_is_help=True,
+    no_args_is_help=False,
     add_completion=False,
 )
 
 
 @app.callback(invoke_without_command=True)
-def main() -> None:
+def main(ctx: typer.Context) -> None:
     """Work with CodeAgent in a local Git repository."""
+    if ctx.invoked_subcommand is None:
+        chat_command()
 
 
+app.command("chat")(chat_command)
 app.command("run")(run_command)
 app.command("resume")(resume_command)
 app.command("status")(status_command)

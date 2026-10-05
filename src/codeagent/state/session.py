@@ -10,6 +10,7 @@ from codeagent.lifecycle import LifecycleState, RunPhase
 from codeagent.loop.budget import BudgetTracker
 from codeagent.loop.interrupt import InterruptController
 from codeagent.loop.limits import RunLimits
+from codeagent.loop.observers import RunOutputObserver
 from codeagent.loop.policy import PolicyGate
 from codeagent.loop.runner import RunResult, run_agent_loop
 from codeagent.observability.run_emitter import build_run_emitter
@@ -166,6 +167,7 @@ def run_with_persistence(
     system: str | None = None,
     max_output_tokens: int | None = None,
     policy: PolicyGate | None = None,
+    output: RunOutputObserver | None = None,
 ) -> RunResult:
     iterations = max_iterations if max_iterations is not None else ctx.limits.max_iterations
     if history is None and ctx.recorder._step_index > 0:
@@ -194,4 +196,5 @@ def run_with_persistence(
         interrupt=interrupt,
         resume_warnings=resume_warnings,
         policy=policy,
+        output=output,
     )
