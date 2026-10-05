@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from openai import OpenAI
-
 from pydantic import SecretStr
 
 from codeagent.config import ConfigError, Settings
