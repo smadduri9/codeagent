@@ -79,6 +79,7 @@ skipped (no eval evidence). See decision records 0007, 0008, and 0009.
 
 ## Session evidence
 
+- Groq free-tier stack: PR #28 — `cheap`/`main`/`fallbacks` docs, `resolve_run_model`, k8s-hpa-benchmark example config.
 - P8-F5–F7: PR #19; 40-task fixtures, `core12` slice, replay validation tests; 407+ tests green.
 - P8-F8: payment fixture on `main` at `4b22201`; `tests/unit/test_payment_demo.py`.
 - P8-F9: replay baseline under `evals/baselines/replay-40/`; live core12 **2/12** (feat-01, feat-02 pass); gate **not met / undetermined** per `evals/baselines/gate-conclusion.md`.
