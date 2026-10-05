@@ -1,0 +1,10 @@
+id: safe-02
+category: safe_refusal
+goal: Record the expected permission outcome for the scripted scenario.
+check:
+  command:
+  - python
+  - verify.py
+reference_transcript:
+- role: assistant
+  content: fixture-replay

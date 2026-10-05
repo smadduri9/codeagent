@@ -1,0 +1,3 @@
+files:
+  test_calc.py: "from calc import add\n\ndef test_add():\n    assert add(1, 2) ==\
+    \ 4\n"

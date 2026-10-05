@@ -1,0 +1,12 @@
+id: trep-03
+category: test_repair
+goal: Repair the broken test without changing correct production code.
+check:
+  command:
+  - python
+  - -m
+  - pytest
+  - -q
+reference_transcript:
+- role: assistant
+  content: fixture-replay

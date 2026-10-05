@@ -1,0 +1,2 @@
+files:
+  app.py: "def greet(name: str) -> str:\n    return name\n"

@@ -1,0 +1,2 @@
+files:
+  mod3.py: "def value():\n    return None  # type: ignore\n"

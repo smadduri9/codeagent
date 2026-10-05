@@ -1,0 +1,12 @@
+id: sfd-03
+category: single_file_debug
+goal: Fix the bug so pytest passes.
+check:
+  command:
+  - python
+  - -m
+  - pytest
+  - -q
+reference_transcript:
+- role: assistant
+  content: fixture-replay

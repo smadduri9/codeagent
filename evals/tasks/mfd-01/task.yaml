@@ -1,0 +1,12 @@
+id: mfd-01
+category: multi_file_debug
+goal: Fix the multi-file bug so pytest passes.
+check:
+  command:
+  - python
+  - -m
+  - pytest
+  - -q
+reference_transcript:
+- role: assistant
+  content: fixture-replay

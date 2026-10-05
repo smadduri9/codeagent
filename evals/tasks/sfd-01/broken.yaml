@@ -1,0 +1,2 @@
+files:
+  mod1.py: "def value():\n    return 41\n"

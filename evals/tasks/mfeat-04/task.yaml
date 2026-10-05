@@ -1,0 +1,12 @@
+id: mfeat-04
+category: multi_file_feature
+goal: Implement the missing behavior so tests pass.
+check:
+  command:
+  - python
+  - -m
+  - pytest
+  - -q
+reference_transcript:
+- role: assistant
+  content: fixture-replay

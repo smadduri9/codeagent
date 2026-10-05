@@ -1,0 +1,2 @@
+files:
+  mod4.py: "def value():\n    return 42 // 0\n"
