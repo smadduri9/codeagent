@@ -20,12 +20,20 @@ class JsonlEventSink:
         span_id: str | None,
         name: str,
         payload: dict[str, Any] | None,
+        parent_span_id: str | None = None,
     ) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(
                 json.dumps(
-                    {"run_id": run_id, "trace_id": trace_id, "name": name, "payload": payload}
+                    {
+                        "run_id": run_id,
+                        "trace_id": trace_id,
+                        "span_id": span_id,
+                        "parent_span_id": parent_span_id,
+                        "name": name,
+                        "payload": payload,
+                    }
                 )
                 + "\n"
             )
@@ -43,5 +51,13 @@ class DatabaseEventSink:
         span_id: str | None,
         name: str,
         payload: dict[str, Any] | None,
+        parent_span_id: str | None = None,
     ) -> None:
-        self.store.record_event(run_id, name, payload, trace_id=trace_id, span_id=span_id)
+        self.store.record_event(
+            run_id,
+            name,
+            payload,
+            trace_id=trace_id,
+            span_id=span_id,
+            parent_span_id=parent_span_id,
+        )

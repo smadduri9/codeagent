@@ -632,18 +632,21 @@ class StateStore:
         *,
         trace_id: str | None = None,
         span_id: str | None = None,
+        parent_span_id: str | None = None,
     ) -> None:
         conn = self._transaction()
         try:
             conn.execute(
                 """
-                INSERT INTO events (run_id, trace_id, span_id, name, ts, payload_json)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO events
+                    (run_id, trace_id, span_id, parent_span_id, name, ts, payload_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run_id,
                     trace_id,
                     span_id,
+                    parent_span_id,
                     name,
                     _utc_now(),
                     json.dumps(payload) if payload else None,
