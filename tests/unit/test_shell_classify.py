@@ -132,8 +132,38 @@ def test_compound_strictest(
     assert isinstance(_classify(left, workspace, settings.permissions), right)
 
 
-def test_unknown_segment_defaults_ask(settings: Settings) -> None:
-    assert isinstance(classify_segment("mystery_cmd", settings.permissions), Ask)
+def test_unknown_segment_defaults_ask(workspace: Path, settings: Settings) -> None:
+    assert isinstance(
+        classify_segment("mystery_cmd", settings.permissions, workspace=workspace),
+        Ask,
+    )
+
+
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("cat ~/.ssh/id_rsa", Deny),
+        ("cat ../../.env", Deny),
+        ("head /etc/passwd", Deny),
+        ("cat .env", Ask),
+        ("cat a.txt", Allow),
+        ("grep foo a.txt", Allow),
+        ("grep foo /etc/hosts", Deny),
+        ("rg foo ../", Deny),
+        ("find / -name x", Deny),
+        ("ls", Allow),
+        ("head -n 5 a.txt", Allow),
+    ],
+)
+def test_read_paths(
+    command: str,
+    expected: type,
+    workspace: Path,
+    settings: Settings,
+) -> None:
+    (workspace / "a.txt").write_text("x")
+    (workspace / ".env").write_text("K=v")
+    assert isinstance(_classify(command, workspace, settings.permissions), expected)
 
 
 @pytest.mark.parametrize(

@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shlex
 from pathlib import Path
 
 from codeagent.config import PermissionSettings
-from codeagent.permissions.rules import extract_redirect_paths, path_write_decision
+from codeagent.permissions.rules import (
+    extract_redirect_paths,
+    path_read_decision,
+    path_write_decision,
+)
 from codeagent.permissions.shell_parse import parse_shell, segment_argv
 from codeagent.permissions.types import Allow, Ask, Decision, Deny, RiskLevel, strictest
 
@@ -97,7 +102,46 @@ def _classify_git(argv: list[str]) -> Decision:
     return Ask("unknown git command", risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT)
 
 
-def classify_segment(segment: str, settings: PermissionSettings) -> Decision:
+_PATH_ARG_COMMANDS = frozenset({"ls", "cat", "head", "tail", "wc", "grep", "rg", "find"})
+_PATTERN_FIRST = frozenset({"grep", "rg"})
+
+
+def _path_args(name: str, argv: list[str]) -> list[str]:
+    if name == "find":
+        paths: list[str] = []
+        for arg in argv[1:]:
+            if arg.startswith("-") or arg in {"(", "!", ")"}:
+                break
+            paths.append(arg)
+        return paths
+    args = [a for a in argv[1:] if not a.startswith("-")]
+    if name in _PATTERN_FIRST and args:
+        args = args[1:]
+    if name in {"head", "tail"}:
+        args = [a for a in args if not a.isdigit()]
+    return args
+
+
+def _read_path_decisions(
+    name: str,
+    argv: list[str],
+    workspace: Path,
+    settings: PermissionSettings,
+) -> list[Decision]:
+    if name not in _PATH_ARG_COMMANDS:
+        return []
+    return [
+        path_read_decision(workspace, os.path.expanduser(path), settings)
+        for path in _path_args(name, argv)
+    ]
+
+
+def classify_segment(
+    segment: str,
+    settings: PermissionSettings,
+    *,
+    workspace: Path,
+) -> Decision:
     normalized = _normalize(segment)
     for pattern, label in _DENY_PATTERNS:
         if pattern.search(normalized):
@@ -113,9 +157,15 @@ def classify_segment(segment: str, settings: PermissionSettings) -> Decision:
         return Allow(risk_level=RiskLevel.READ_ONLY)
 
     if name in _READ_ONLY_COMMANDS:
-        return Allow(risk_level=RiskLevel.READ_ONLY)
+        return strictest(
+            Allow(risk_level=RiskLevel.READ_ONLY),
+            *_read_path_decisions(name, argv, workspace, settings),
+        )
     if name == "find":
-        return _classify_find(argv)
+        return strictest(
+            _classify_find(argv),
+            *_read_path_decisions(name, argv, workspace, settings),
+        )
     if name == "git":
         return _classify_git(argv)
     if name in _ASK_COMMANDS:
@@ -149,7 +199,7 @@ def classify_shell(
 
     decisions: list[Decision] = []
     for segment in parsed.segments:
-        decisions.append(classify_segment(segment, settings))
+        decisions.append(classify_segment(segment, settings, workspace=workspace))
         for target in extract_redirect_paths(segment):
             if target not in {"/dev/null", "/dev/stderr", "/dev/stdout"}:
                 decisions.append(
@@ -161,9 +211,11 @@ def classify_shell(
 def classify_argv(
     argv: list[str],
     settings: PermissionSettings,
+    *,
+    workspace: Path,
 ) -> Decision:
     """Classify a no-shell argv list (run_command)."""
     if not argv:
         return Ask("empty argv", risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT)
     segment = " ".join(shlex.quote(str(part)) for part in argv)
-    return classify_segment(segment, settings)
+    return classify_segment(segment, settings, workspace=workspace)

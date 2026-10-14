@@ -42,7 +42,7 @@ def decide(
         if not isinstance(argv, list):
             return Ask("run_command requires argv")
         str_argv = [str(part) for part in argv]
-        argv_decision = classify_argv(str_argv, settings)
+        argv_decision = classify_argv(str_argv, settings, workspace=workspace)
         base = combine_tool_decision(call.name, settings, path_decisions)
         return strictest(base, argv_decision)
 
