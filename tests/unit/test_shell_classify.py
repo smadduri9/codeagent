@@ -163,3 +163,12 @@ def test_more_unknown_commands_ask(command: str, workspace: Path, settings: Sett
 def test_extra_allow_from_config(workspace: Path) -> None:
     settings = Settings.model_validate({"permissions": {"extra_allow": ["customtool"]}})
     assert isinstance(_classify("customtool", workspace, settings.permissions), Allow)
+
+
+@pytest.mark.parametrize("command", ["ls\nrm -rf src", "ls\rrm x", "pwd\n", "cat a\x00b"])
+def test_control_chars_ask(command: str, workspace: Path, settings: Settings) -> None:
+    assert isinstance(_classify(command, workspace, settings.permissions), Ask)
+
+
+def test_tab_still_allowed(workspace: Path, settings: Settings) -> None:
+    assert isinstance(_classify("ls\tsrc", workspace, settings.permissions), Allow)
