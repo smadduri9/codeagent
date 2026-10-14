@@ -9,6 +9,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from codeagent.context.manager import ContextManager
+from codeagent.failures import classify_tool_failure
 from codeagent.lifecycle import LifecycleState, RunPhase
 from codeagent.loop.budget import (
     BudgetTracker,
@@ -54,6 +55,18 @@ class RunResult:
     run_id: str | None = None
     exhaustion_report: ExhaustionReport | None = None
     resume_warnings: list[str] = field(default_factory=list)
+
+
+def _emit_tool_failure(
+    recorder: RunRecorder,
+    tool: str,
+    ok: bool,
+    content: str,
+) -> None:
+    if ok:
+        return
+    failure = classify_tool_failure(tool, content)
+    recorder.emit("failure.classified", {"tool": tool, "class": failure.value})
 
 
 def run_agent_loop(
@@ -346,6 +359,7 @@ def run_agent_loop(
                         result_content=body,
                         duration_ms=timer.elapsed_ms(),
                     )
+                    _emit_tool_failure(recorder, call.name, result.ok, result.content)
                 if budget is not None:
                     budget.on_tool_completed()
                 tool_messages.append(
@@ -440,6 +454,7 @@ def run_agent_loop(
                     result_content=body,
                     duration_ms=timer.elapsed_ms(),
                 )
+                _emit_tool_failure(recorder, call.name, result.ok, result.content)
             if budget is not None:
                 budget.on_tool_completed()
             tool_messages.append(
