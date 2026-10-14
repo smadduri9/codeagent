@@ -1,8 +1,8 @@
 """Collect streaming provider events into a single model reply."""
 
+import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from json import loads
 
 from codeagent.providers.base import (
     ModelEvent,
@@ -24,6 +24,7 @@ class ModelReply:
     tool_calls: list[ToolCall] = field(default_factory=list)
     usage: Usage | None = None
     stop_reason: StopReason | None = None
+    first_event_at: float | None = None
 
 
 def collect_stream(
@@ -36,6 +37,8 @@ def collect_stream(
     pending_args: dict[str, str] = {}
     pending_names: dict[str, str] = {}
     for event in events:
+        if reply.first_event_at is None and isinstance(event, (TextDelta, ToolCallStart)):
+            reply.first_event_at = time.perf_counter()
         if isinstance(event, TextDelta):
             reply.content += event.text
             if on_text_delta is not None and event.text:
@@ -55,12 +58,6 @@ def collect_stream(
             reply.usage = event.usage
         elif isinstance(event, Stop):
             reply.stop_reason = event.reason
-    for call_id, name in list(pending_names.items()):
-        raw = pending_args.get(call_id, "")
-        args: dict[str, object] = {}
-        if raw:
-            parsed = loads(raw)
-            if isinstance(parsed, dict):
-                args = parsed
-        reply.tool_calls.append(ToolCall(id=call_id, name=name, args=args))
+    # Calls that never received ToolCallEnd come from a truncated stream or a
+    # malformed argument string. They are dropped, never executed.
     return reply

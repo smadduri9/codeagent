@@ -55,4 +55,7 @@ strict = true
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "--strict-markers"
-markers = ["live: optional real-provider checks, excluded from the default check script"]
+markers = [
+    "live: optional real-provider checks, excluded from the default check script",
+    "slow: subprocess-based checks that take more than a moment",
+]

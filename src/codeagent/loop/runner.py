@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import signal
 import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
@@ -33,7 +35,8 @@ from codeagent.providers.base import (
     ToolCall,
 )
 from codeagent.providers.protocol import Provider
-from codeagent.providers.stream import collect_stream
+from codeagent.providers.quota_errors import ProviderError
+from codeagent.providers.stream import ModelReply, collect_stream
 from codeagent.state.recorder import RunRecorder, ToolTimer
 from codeagent.state.store import StateStore
 from codeagent.tools.registry import ToolRegistry, ToolValidationError, UnknownToolError
@@ -119,6 +122,39 @@ def _emit_plan_updated(recorder: RunRecorder | None, call: ToolCall, ok: bool) -
     if recorder is None or not ok or call.name != "update_plan":
         return
     recorder.emit("plan.updated", {"tool": call.name})
+
+
+def _maybe_crash(stage: str) -> None:
+    """Test-only hook: SIGKILL this process at a named stage. See decision 0013."""
+    if os.environ.get("CODEAGENT_TEST_CRASH_AT") == stage:
+        os.kill(os.getpid(), signal.SIGKILL)
+
+
+def _annotate_model_call(
+    recorder: RunRecorder,
+    reply: ModelReply,
+    *,
+    started: float,
+    latency_ms: int,
+    breakdown: dict[str, int],
+    prefix_hash: str | None,
+) -> None:
+    usage = reply.usage
+    annotations: dict[str, Any] = {f"est.{key}": value for key, value in breakdown.items()}
+    annotations["latency.total_ms"] = latency_ms
+    annotations["latency.ttft_ms"] = (
+        int((reply.first_event_at - started) * 1000) if reply.first_event_at is not None else None
+    )
+    annotations["stop_reason"] = reply.stop_reason.value if reply.stop_reason else None
+    annotations["prefix_hash"] = prefix_hash
+    if usage is not None:
+        annotations["usage.input"] = usage.input
+        annotations["usage.output"] = usage.output
+        annotations["usage.cache_read"] = usage.cache_read
+        annotations["usage.cache_write"] = usage.cache_write
+        if usage.input > 0 and breakdown:
+            annotations["est_error"] = (sum(breakdown.values()) - usage.input) / usage.input
+    recorder.annotate(annotations)
 
 
 def _emit_tool_failure(
@@ -248,6 +284,8 @@ def run_agent_loop(
 
         tools = registry.list_specs()
         request_system, request_messages = system, chat_history
+        breakdown: dict[str, int] = {}
+        prefix_hash: str | None = None
         if context is not None:
             assembled = context.assemble(goal=goal, history=chat_history, tools=tools)
             request_system, request_messages = assembled.system, assembled.messages
@@ -260,6 +298,9 @@ def run_agent_loop(
                         "prefix_hash": assembled.stable_prefix_hash,
                     },
                 )
+
+            breakdown = assembled.breakdown
+            prefix_hash = assembled.stable_prefix_hash
             if assembled.compaction is not None:
                 chat_history = list(assembled.compaction.history)
                 if recorder is not None:
@@ -280,13 +321,26 @@ def run_agent_loop(
         )
         with _span(recorder, "model.call", {"model": model, "iteration": iteration}):
             started = time.perf_counter()
-            reply = collect_stream(
-                provider.stream(request),
-                on_text_delta=sink.on_text_delta,
-                on_tool_announced=sink.on_tool_announced,
-            )
+            try:
+                reply = collect_stream(
+                    provider.stream(request),
+                    on_text_delta=sink.on_text_delta,
+                    on_tool_announced=sink.on_tool_announced,
+                )
+            except ProviderError:
+                lifecycle_state.transition(RunPhase.STOPPED)
+                return _finish(RunPhase.STOPPED, "provider_error")
             sink.on_model_turn_end()
             latency_ms = int((time.perf_counter() - started) * 1000)
+            if recorder is not None:
+                _annotate_model_call(
+                    recorder,
+                    reply,
+                    started=started,
+                    latency_ms=latency_ms,
+                    breakdown=breakdown,
+                    prefix_hash=prefix_hash,
+                )
 
             if recorder is not None:
                 usage = reply.usage
@@ -422,6 +476,7 @@ def run_agent_loop(
                             {"tool": call.name, "call_id": call.id},
                         )
                     sink.on_tool_start(call.name)
+                    _maybe_crash("tool_started")
                     timer = ToolTimer()
                     result = policy.execute_allowed(call, decision)
                     sink.on_tool_end(call.name, result.ok)
@@ -515,6 +570,7 @@ def run_agent_loop(
                         {"tool": call.name, "call_id": call.id},
                     )
                 sink.on_tool_start(call.name)
+                _maybe_crash("tool_started")
                 timer = ToolTimer()
                 try:
                     result = registry.run(call)
