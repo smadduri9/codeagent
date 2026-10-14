@@ -57,3 +57,35 @@ def load_instances(jsonl_path: Path, instance_ids: list[str]) -> list[SweInstanc
 def check_command(inst: SweInstance) -> list[str]:
     """The command that must pass for the instance to count as solved."""
     return ["python", "-m", "pytest", "-q", *inst.fail_to_pass]
+
+
+def repo_url(repo: str) -> str:
+    """Public GitHub URL for an instance's repository."""
+    return f"https://github.com/{repo}.git"
+
+
+def _clone_dir(cache_dir: Path, repo: str) -> Path:
+    return cache_dir / repo.replace("/", "__")
+
+
+def prepare_workspace(inst: SweInstance, cache_dir: Path) -> Path:
+    """Return a detached worktree at base_commit with the test patch applied.
+
+    The clone is made once per repository and reused. Network access happens only
+    through `git clone` of `repo_url(inst.repo)`; tests replace that function.
+    """
+    from codeagent.isolation.git_wrapper import run_git
+
+    clone = _clone_dir(cache_dir, inst.repo)
+    if not (clone / ".git").exists():
+        clone.parent.mkdir(parents=True, exist_ok=True)
+        run_git(clone.parent, ["clone", "--quiet", repo_url(inst.repo), str(clone)])
+    worktree = cache_dir / "work" / inst.instance_id
+    worktree.parent.mkdir(parents=True, exist_ok=True)
+    run_git(clone, ["worktree", "add", "--detach", str(worktree), inst.base_commit])
+    if inst.test_patch.strip():
+        patch = cache_dir / "patches" / f"{inst.instance_id}.patch"
+        patch.parent.mkdir(parents=True, exist_ok=True)
+        patch.write_text(inst.test_patch, encoding="utf-8")
+        run_git(worktree, ["apply", str(patch)])
+    return worktree
