@@ -146,7 +146,14 @@ def run_argv(
         except subprocess.TimeoutExpired:
             timed_out = True
             _kill_process_group(proc)
-            stdout, _ = proc.communicate()
+            try:
+                stdout, _ = proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                if proc.stdout is not None:
+                    proc.stdout.close()
+                proc.wait(timeout=5)
+                stdout = "[output drain timed out]"
     except OSError as exc:
         duration_ms = int((time.perf_counter() - start) * 1000)
         return CommandRunResult(
