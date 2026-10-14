@@ -1,6 +1,7 @@
 """codeagent stats: pure computation over stored events."""
 
 import json
+import re
 
 from typer.testing import CliRunner
 
@@ -74,4 +75,6 @@ def test_json_output_is_valid() -> None:
 def test_stats_command_help() -> None:
     result = CliRunner().invoke(app, ["stats", "--help"])
     assert result.exit_code == 0
-    assert "--json" in result.output
+    # Rich adds colour codes around option names on CI; strip them before matching.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--json" in plain
