@@ -118,6 +118,12 @@ def _emit_budget_warnings(budget: BudgetTracker, recorder: RunRecorder | None) -
         recorder.emit("budget.warning", warning)
 
 
+def _emit_plan_updated(recorder: RunRecorder | None, call: ToolCall, ok: bool) -> None:
+    if recorder is None or not ok or call.name != "update_plan":
+        return
+    recorder.emit("plan.updated", {"tool": call.name})
+
+
 def _maybe_crash(stage: str) -> None:
     """Test-only hook: SIGKILL this process at a named stage. See decision 0013."""
     if os.environ.get("CODEAGENT_TEST_CRASH_AT") == stage:
@@ -283,6 +289,16 @@ def run_agent_loop(
         if context is not None:
             assembled = context.assemble(goal=goal, history=chat_history, tools=tools)
             request_system, request_messages = assembled.system, assembled.messages
+            if recorder is not None:
+                recorder.emit(
+                    "context.built",
+                    {
+                        "messages": len(request_messages),
+                        "est_tokens": assembled.estimated_input_tokens,
+                        "prefix_hash": assembled.stable_prefix_hash,
+                    },
+                )
+
             breakdown = assembled.breakdown
             prefix_hash = assembled.stable_prefix_hash
             if assembled.compaction is not None:
@@ -477,6 +493,7 @@ def run_agent_loop(
                             duration_ms=timer.elapsed_ms(),
                         )
                         _emit_tool_failure(recorder, call.name, result.ok, result.content)
+                        _emit_plan_updated(recorder, call, result.ok)
                         _emit_verification(recorder, call, result.content)
                         _emit_file_changed(recorder, call, result.ok)
                 if budget is not None:
@@ -576,6 +593,7 @@ def run_agent_loop(
                         duration_ms=timer.elapsed_ms(),
                     )
                     _emit_tool_failure(recorder, call.name, result.ok, result.content)
+                    _emit_plan_updated(recorder, call, result.ok)
                     _emit_verification(recorder, call, result.content)
                     _emit_file_changed(recorder, call, result.ok)
             if budget is not None:
