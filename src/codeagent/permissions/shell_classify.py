@@ -30,6 +30,25 @@ _READ_ONLY_COMMANDS = frozenset(
     },
 )
 _GIT_READ_SUBCOMMANDS = frozenset({"status", "diff", "log", "show", "branch"})
+_RG_UNSAFE = ("--pre", "--pre-glob", "-z", "--search-zip", "--hostname-bin")
+_FIND_UNSAFE = frozenset(
+    {
+        "-exec",
+        "-execdir",
+        "-ok",
+        "-okdir",
+        "-delete",
+        "-fprint",
+        "-fprint0",
+        "-fprintf",
+        "-fls",
+    },
+)
+_TAIL_UNSAFE = ("-f", "-F", "--follow", "--retry")
+_GIT_BRANCH_SAFE = frozenset(
+    {"-a", "-r", "-v", "-vv", "--list", "--show-current", "--all", "--remotes"},
+)
+_GIT_UNSAFE_PREFIXES = ("--output", "--ext-diff", "--textconv", "--exec", "-o")
 _ASK_COMMANDS = frozenset(
     {
         "rm",
@@ -78,10 +97,13 @@ def _command_name(argv: list[str]) -> str | None:
     return Path(token).name
 
 
+def _has_flag(argv: list[str], flags: tuple[str, ...]) -> bool:
+    return any(a == f or a.startswith(f + "=") for a in argv[1:] for f in flags)
+
+
 def _classify_find(argv: list[str]) -> Decision:
-    for arg in argv[1:]:
-        if arg in {"-delete", "-exec"}:
-            return Ask("find with delete or exec", risk_level=RiskLevel.DESTRUCTIVE)
+    if any(arg in _FIND_UNSAFE for arg in argv[1:]):
+        return Ask("find with exec, delete or file output", risk_level=RiskLevel.DESTRUCTIVE)
     return Allow(risk_level=RiskLevel.READ_ONLY)
 
 
@@ -89,7 +111,16 @@ def _classify_git(argv: list[str]) -> Decision:
     if len(argv) < 2:
         return Ask("unknown git invocation", risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT)
     sub = argv[1]
+    if sub == "branch":
+        if all(a in _GIT_BRANCH_SAFE for a in argv[2:]):
+            return Allow(risk_level=RiskLevel.READ_ONLY)
+        return Ask("git branch with arguments", risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT)
     if sub in _GIT_READ_SUBCOMMANDS:
+        if any(a.startswith(_GIT_UNSAFE_PREFIXES) for a in argv[2:]):
+            return Ask(
+                "git read command with output or exec flag",
+                risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT,
+            )
         return Allow(risk_level=RiskLevel.READ_ONLY)
     if sub == "push":
         return Ask("git push", risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT)
@@ -156,6 +187,13 @@ def classify_segment(
     if name in extra:
         return Allow(risk_level=RiskLevel.READ_ONLY)
 
+    if name == "rg" and _has_flag(argv, _RG_UNSAFE):
+        return Ask(
+            "rg preprocessor or decompression flag",
+            risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT,
+        )
+    if name == "tail" and _has_flag(argv, _TAIL_UNSAFE):
+        return Ask("tail follow does not terminate", risk_level=RiskLevel.EXTERNAL_SIDE_EFFECT)
     if name in _READ_ONLY_COMMANDS:
         return strictest(
             Allow(risk_level=RiskLevel.READ_ONLY),
