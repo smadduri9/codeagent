@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from codeagent.isolation.git_wrapper import GitCommandError, run_git
 
@@ -30,6 +32,7 @@ class CheckpointStore:
     repo: Path
     path: Path
     records: list[CheckpointRecord] = field(default_factory=list)
+    on_event: Callable[[str, dict[str, Any]], None] | None = None
 
     @classmethod
     def load(
@@ -84,6 +87,8 @@ class CheckpointStore:
         record = CheckpointRecord(label=label, git_ref=ref, created_at=created)
         self.records.append(record)
         self.save()
+        if self.on_event is not None:
+            self.on_event("checkpoint.created", {"label": label, "git_ref": ref})
         return record
 
     def rollback_to(self, label: str | None) -> str:
