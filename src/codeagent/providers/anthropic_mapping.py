@@ -5,9 +5,25 @@ No SDK import here, so the mapping is testable without the optional dependency.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterable, Iterator
 from typing import Any
 
-from codeagent.providers.base import Message, MessageRole, ModelRequest
+from codeagent.providers.base import (
+    Message,
+    MessageRole,
+    ModelEvent,
+    ModelRequest,
+    Stop,
+    StopReason,
+    TextDelta,
+    ToolCall,
+    ToolCallArgsDelta,
+    ToolCallEnd,
+    ToolCallStart,
+    Usage,
+    UsageEvent,
+)
 
 
 def _text_block(text: str) -> dict[str, Any]:
@@ -78,3 +94,69 @@ def to_anthropic_request(req: ModelRequest) -> dict[str, Any]:
         ],
         "temperature": req.temperature,
     }
+
+
+_STOP_REASONS = {
+    "end_turn": StopReason.STOP,
+    "stop_sequence": StopReason.STOP,
+    "tool_use": StopReason.TOOL_CALLS,
+    "max_tokens": StopReason.LENGTH,
+}
+
+
+def map_stream(events: Iterable[dict[str, Any]]) -> Iterator[ModelEvent]:
+    """Map raw Anthropic SSE event dicts to codeagent model events."""
+    input_tokens = cache_read = cache_write = 0
+    output_tokens = 0
+    tool_ids: dict[int, str] = {}
+    tool_names: dict[int, str] = {}
+    tool_args: dict[int, str] = {}
+    stop_reason: StopReason | None = None
+    for event in events:
+        kind = event.get("type")
+        if kind == "message_start":
+            usage = event.get("message", {}).get("usage", {})
+            input_tokens = int(usage.get("input_tokens", 0) or 0)
+            cache_read = int(usage.get("cache_read_input_tokens", 0) or 0)
+            cache_write = int(usage.get("cache_creation_input_tokens", 0) or 0)
+        elif kind == "content_block_start":
+            block = event.get("content_block", {})
+            if block.get("type") == "tool_use":
+                index = int(event.get("index", 0))
+                tool_ids[index] = str(block.get("id"))
+                tool_names[index] = str(block.get("name"))
+                tool_args[index] = ""
+                yield ToolCallStart(id=tool_ids[index], name=tool_names[index])
+        elif kind == "content_block_delta":
+            delta = event.get("delta", {})
+            index = int(event.get("index", 0))
+            if delta.get("type") == "text_delta":
+                yield TextDelta(text=str(delta.get("text", "")))
+            elif delta.get("type") == "input_json_delta" and index in tool_ids:
+                partial = str(delta.get("partial_json", ""))
+                tool_args[index] += partial
+                yield ToolCallArgsDelta(id=tool_ids[index], delta=partial)
+        elif kind == "content_block_stop":
+            index = int(event.get("index", 0))
+            if index in tool_ids:
+                raw = tool_args.pop(index) or "{}"
+                args = json.loads(raw)
+                if not isinstance(args, dict):
+                    args = {}
+                yield ToolCallEnd(
+                    call=ToolCall(id=tool_ids.pop(index), name=tool_names.pop(index), args=args),
+                )
+        elif kind == "message_delta":
+            output_tokens = int(event.get("usage", {}).get("output_tokens", output_tokens) or 0)
+            reason = event.get("delta", {}).get("stop_reason")
+            stop_reason = _STOP_REASONS.get(str(reason), StopReason.STOP)
+        elif kind == "message_stop":
+            yield UsageEvent(
+                usage=Usage(
+                    input=input_tokens,
+                    output=output_tokens,
+                    cache_read=cache_read,
+                    cache_write=cache_write,
+                ),
+            )
+            yield Stop(reason=stop_reason or StopReason.STOP)
