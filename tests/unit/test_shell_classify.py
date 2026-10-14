@@ -32,7 +32,6 @@ def _classify(command: str, workspace: Path, settings: PermissionSettings):
         "ls -la",
         "cat README.md",
         "head -n 5 src/main.py",
-        "tail -f log.txt",
         "wc -l src/main.py",
         "rg foo",
         "grep -r pattern src",
@@ -202,3 +201,40 @@ def test_control_chars_ask(command: str, workspace: Path, settings: Settings) ->
 
 def test_tab_still_allowed(workspace: Path, settings: Settings) -> None:
     assert isinstance(_classify("ls\tsrc", workspace, settings.permissions), Allow)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rg --pre sh x .",
+        "rg --pre=sh x .",
+        "rg -z x .",
+        "find . -execdir rm {} +",
+        "find . -fprint out",
+        "find . -ok rm {} ;",
+        "tail -f a.txt",
+        "git branch -D main",
+        "git branch new-branch",
+        "git diff --output=x.py",
+        "git log --ext-diff",
+    ],
+)
+def test_flag_rules_ask(command: str, workspace: Path, settings: Settings) -> None:
+    assert isinstance(_classify(command, workspace, settings.permissions), Ask)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rg foo .",
+        "find . -name '*.py'",
+        "tail -n 5 a.txt",
+        "git branch",
+        "git branch -a",
+        "git diff --stat",
+        "git log --oneline",
+    ],
+)
+def test_flag_rules_allow(command: str, workspace: Path, settings: Settings) -> None:
+    (workspace / "a.txt").write_text("x")
+    assert isinstance(_classify(command, workspace, settings.permissions), Allow)
