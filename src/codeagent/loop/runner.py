@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from codeagent.context.manager import ContextManager
 from codeagent.failures import classify_tool_failure
@@ -55,6 +57,16 @@ class RunResult:
     run_id: str | None = None
     exhaustion_report: ExhaustionReport | None = None
     resume_warnings: list[str] = field(default_factory=list)
+
+
+def _span(
+    recorder: RunRecorder | None,
+    name: str,
+    payload: dict[str, Any],
+) -> AbstractContextManager[object]:
+    if recorder is None:
+        return nullcontext()
+    return recorder.span(name, payload)
 
 
 def _emit_tool_failure(
@@ -203,28 +215,29 @@ def run_agent_loop(
             model=model,
             max_output_tokens=max_output_tokens,
         )
-        started = time.perf_counter()
-        reply = collect_stream(
-            provider.stream(request),
-            on_text_delta=sink.on_text_delta,
-            on_tool_announced=sink.on_tool_announced,
-        )
-        sink.on_model_turn_end()
-        latency_ms = int((time.perf_counter() - started) * 1000)
-
-        if recorder is not None:
-            usage = reply.usage
-            recorder.emit(
-                "model.response",
-                {
-                    "iteration": iteration,
-                    "stop_reason": reply.stop_reason.value if reply.stop_reason else None,
-                    "tool_calls": len(reply.tool_calls),
-                    "tokens_in": usage.input if usage else 0,
-                    "tokens_out": usage.output if usage else 0,
-                    "latency_ms": latency_ms,
-                },
+        with _span(recorder, "model.call", {"model": model, "iteration": iteration}):
+            started = time.perf_counter()
+            reply = collect_stream(
+                provider.stream(request),
+                on_text_delta=sink.on_text_delta,
+                on_tool_announced=sink.on_tool_announced,
             )
+            sink.on_model_turn_end()
+            latency_ms = int((time.perf_counter() - started) * 1000)
+
+            if recorder is not None:
+                usage = reply.usage
+                recorder.emit(
+                    "model.response",
+                    {
+                        "iteration": iteration,
+                        "stop_reason": reply.stop_reason.value if reply.stop_reason else None,
+                        "tool_calls": len(reply.tool_calls),
+                        "tokens_in": usage.input if usage else 0,
+                        "tokens_out": usage.output if usage else 0,
+                        "latency_ms": latency_ms,
+                    },
+                )
 
         if budget is not None and reply.usage is not None:
             budget.add_usage(reply.usage)
@@ -338,28 +351,29 @@ def run_agent_loop(
                     )
 
                 guards.on_allow()
-                if recorder is not None:
-                    recorder.emit(
-                        "tool.started",
-                        {"tool": call.name, "call_id": call.id},
+                with _span(recorder, "tool.call", {"tool": call.name, "call_id": call.id}):
+                    if recorder is not None:
+                        recorder.emit(
+                            "tool.started",
+                            {"tool": call.name, "call_id": call.id},
+                        )
+                    sink.on_tool_start(call.name)
+                    timer = ToolTimer()
+                    result = policy.execute_allowed(call, decision)
+                    sink.on_tool_end(call.name, result.ok)
+                    body, _truncated = truncate_content(
+                        policy.wrap_result(result),
+                        max_output_chars,
+                        keep="tail",
                     )
-                sink.on_tool_start(call.name)
-                timer = ToolTimer()
-                result = policy.execute_allowed(call, decision)
-                sink.on_tool_end(call.name, result.ok)
-                body, _truncated = truncate_content(
-                    policy.wrap_result(result),
-                    max_output_chars,
-                    keep="tail",
-                )
-                if recorder is not None:
-                    recorder.complete_tool(
-                        call,
-                        ok=result.ok,
-                        result_content=body,
-                        duration_ms=timer.elapsed_ms(),
-                    )
-                    _emit_tool_failure(recorder, call.name, result.ok, result.content)
+                    if recorder is not None:
+                        recorder.complete_tool(
+                            call,
+                            ok=result.ok,
+                            result_content=body,
+                            duration_ms=timer.elapsed_ms(),
+                        )
+                        _emit_tool_failure(recorder, call.name, result.ok, result.content)
                 if budget is not None:
                     budget.on_tool_completed()
                 tool_messages.append(
@@ -427,34 +441,35 @@ def run_agent_loop(
                 )
 
             guards.on_allow()
-            if recorder is not None:
-                recorder.emit(
-                    "tool.started",
-                    {"tool": call.name, "call_id": call.id},
-                )
-            sink.on_tool_start(call.name)
-            timer = ToolTimer()
-            try:
-                result = registry.run(call)
-            except (ToolValidationError, UnknownToolError) as exc:
-                result = registry.tool_error(call, str(exc))
-            sink.on_tool_end(call.name, result.ok)
-            if call.name in {"write_file", "edit_file"} and result.ok:
-                gate.note_edit()
-                path_arg = call.args.get("path")
-                if isinstance(path_arg, str):
-                    changed_files.append(path_arg)
-            if call.name in {"run_verification", "run_tests"} and result.ok:
-                gate.note_verification_pass()
-            body, _truncated = truncate_content(result.content, max_output_chars, keep="tail")
-            if recorder is not None:
-                recorder.complete_tool(
-                    call,
-                    ok=result.ok,
-                    result_content=body,
-                    duration_ms=timer.elapsed_ms(),
-                )
-                _emit_tool_failure(recorder, call.name, result.ok, result.content)
+            with _span(recorder, "tool.call", {"tool": call.name, "call_id": call.id}):
+                if recorder is not None:
+                    recorder.emit(
+                        "tool.started",
+                        {"tool": call.name, "call_id": call.id},
+                    )
+                sink.on_tool_start(call.name)
+                timer = ToolTimer()
+                try:
+                    result = registry.run(call)
+                except (ToolValidationError, UnknownToolError) as exc:
+                    result = registry.tool_error(call, str(exc))
+                sink.on_tool_end(call.name, result.ok)
+                if call.name in {"write_file", "edit_file"} and result.ok:
+                    gate.note_edit()
+                    path_arg = call.args.get("path")
+                    if isinstance(path_arg, str):
+                        changed_files.append(path_arg)
+                if call.name in {"run_verification", "run_tests"} and result.ok:
+                    gate.note_verification_pass()
+                body, _truncated = truncate_content(result.content, max_output_chars, keep="tail")
+                if recorder is not None:
+                    recorder.complete_tool(
+                        call,
+                        ok=result.ok,
+                        result_content=body,
+                        duration_ms=timer.elapsed_ms(),
+                    )
+                    _emit_tool_failure(recorder, call.name, result.ok, result.content)
             if budget is not None:
                 budget.on_tool_completed()
             tool_messages.append(
