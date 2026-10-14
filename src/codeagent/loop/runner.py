@@ -69,6 +69,31 @@ def _span(
     return recorder.span(name, payload)
 
 
+_VERIFICATION_TOOLS = frozenset({"run_verification", "run_tests"})
+
+
+def _emit_verification(
+    recorder: RunRecorder | None,
+    call: ToolCall,
+    content: str,
+) -> None:
+    """Derive verification events from a verification tool's "name:status" lines."""
+    if recorder is None or call.name not in _VERIFICATION_TOOLS:
+        return
+    recorder.emit("verification.started", {"tool": call.name})
+    passed = failed = 0
+    for line in content.splitlines():
+        name, sep, status = line.partition(":")
+        if not sep:
+            continue
+        recorder.emit("verification.check", {"name": name, "status": status})
+        if status == "pass":
+            passed += 1
+        elif status in {"fail", "flaky"}:
+            failed += 1
+    recorder.emit("verification.completed", {"passed": passed, "failed": failed})
+
+
 _FILE_TOOLS = frozenset({"write_file", "edit_file", "move_path", "delete_path"})
 
 
@@ -398,6 +423,7 @@ def run_agent_loop(
                             duration_ms=timer.elapsed_ms(),
                         )
                         _emit_tool_failure(recorder, call.name, result.ok, result.content)
+                        _emit_verification(recorder, call, result.content)
                         _emit_file_changed(recorder, call, result.ok)
                 if budget is not None:
                     budget.on_tool_completed()
@@ -495,6 +521,7 @@ def run_agent_loop(
                         duration_ms=timer.elapsed_ms(),
                     )
                     _emit_tool_failure(recorder, call.name, result.ok, result.content)
+                    _emit_verification(recorder, call, result.content)
                     _emit_file_changed(recorder, call, result.ok)
             if budget is not None:
                 budget.on_tool_completed()
