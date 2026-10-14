@@ -35,6 +35,9 @@ RESUMABLE_STOP_REASONS = frozenset(
 )
 
 
+INTERRUPTED_MSG = "interrupted: outcome unknown; inspect the workspace before retrying"
+
+
 @dataclass(frozen=True, slots=True)
 class PersistedRunContext:
     store: StateStore
@@ -134,6 +137,15 @@ def prepare_resume(
         _step_index=store.next_step_index(run_id),
     )
     warnings = reconcile_files_read(store, run_id, repo_root)
+    for row in store.list_incomplete_tool_calls(run_id):
+        store.complete_tool_call(
+            row["id"],
+            ok=False,
+            result_content=INTERRUPTED_MSG,
+            duration_ms=0,
+        )
+        recorder.emit("failure.classified", {"tool": row["tool"], "class": "interrupted"})
+        warnings.append(f"tool {row['tool']} was interrupted; outcome unknown")
     stale = stale_read_paths(store, run_id, repo_root)
     if stale:
         warnings.append(
