@@ -9,6 +9,7 @@ from codeagent.cli_resume import resume_command
 from codeagent.cli_rollback import rollback_command
 from codeagent.cli_run import run_command
 from codeagent.cli_runs import runs_app
+from codeagent.cli_stats import stats_command
 from codeagent.cli_status import status_command
 from codeagent.cli_trace import trace_command
 
@@ -33,6 +34,7 @@ app.command("status")(status_command)
 app.command("rollback")(rollback_command)
 app.command("init")(init_command)
 app.command("trace")(trace_command)
+app.command("stats")(stats_command)
 app.command("eval")(eval_command)
 app.add_typer(runs_app, name="runs")
 
