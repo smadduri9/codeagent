@@ -31,6 +31,7 @@ Documentation = "https://github.com/smadduri9/codeagent/blob/main/docs/README.md
 
 [project.optional-dependencies]
 dev = ["ruff>=0.11,<1", "mypy>=1.15,<2", "pytest>=8.3,<10", "types-PyYAML>=6.0,<7"]
+anthropic = ["anthropic>=0.40"]
 
 [project.scripts]
 codeagent = "codeagent.cli:app"
