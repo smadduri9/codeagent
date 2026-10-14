@@ -78,3 +78,21 @@ def test_uses_process_group_on_posix() -> None:
         os.killpg(proc.pid, 9)
     finally:
         proc.wait(timeout=5)
+
+
+def test_env_allowlist_drops_unknown_and_secrets() -> None:
+    env = filtered_environment(
+        base={
+            "PATH": "/bin",
+            "AWS_SECRET_ACCESS_KEY": "x",
+            "DATABASE_URL": "postgres://u:p@h",
+            "FOO": "1",
+        },
+    )
+    assert env == {"PATH": "/bin"}
+
+
+def test_env_passthrough_but_never_secrets() -> None:
+    base = {"PATH": "/bin", "FOO": "1", "GROQ_API_KEY": "k"}
+    env = filtered_environment(base=base, passthrough=["FOO", "GROQ_API_KEY"])
+    assert env == {"PATH": "/bin", "FOO": "1"}
