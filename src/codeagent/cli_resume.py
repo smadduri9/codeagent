@@ -16,7 +16,12 @@ from codeagent.providers.base import ModelEvent
 from codeagent.providers.factory import build_managed_provider
 from codeagent.providers.fake import FakeProvider
 from codeagent.providers.protocol import Provider
-from codeagent.runtime.bootstrap import build_policy_gate, build_system_prompt, build_tool_registry
+from codeagent.runtime.bootstrap import (
+    build_context_manager,
+    build_policy_gate,
+    build_system_prompt,
+    build_tool_registry,
+)
 from codeagent.state.session import prepare_resume, run_with_persistence
 from codeagent.state.store import StateStore, default_state_db_path
 
@@ -80,6 +85,7 @@ def resume_command(
             scripted=scripted,
         )
         system = build_system_prompt(repo_root, settings)
+        context = build_context_manager(repo_root, settings)
         iterations = max_iterations or settings.limits.max_iterations
         renderer = CliRunOutputRenderer(console=console)
         result = run_with_persistence(
@@ -95,6 +101,7 @@ def resume_command(
             max_output_tokens=settings.request.max_output_tokens,
             policy=policy,
             output=renderer,
+            context=context,
         )
     finally:
         store.close()

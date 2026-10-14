@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from codeagent.config import Settings
+from codeagent.context.manager import ContextManager
 from codeagent.lifecycle import LifecycleState, RunPhase
 from codeagent.loop.budget import BudgetTracker
 from codeagent.loop.interrupt import InterruptController
@@ -168,6 +169,7 @@ def run_with_persistence(
     max_output_tokens: int | None = None,
     policy: PolicyGate | None = None,
     output: RunOutputObserver | None = None,
+    context: ContextManager | None = None,
 ) -> RunResult:
     iterations = max_iterations if max_iterations is not None else ctx.limits.max_iterations
     if history is None and ctx.recorder._step_index > 0:
@@ -197,4 +199,5 @@ def run_with_persistence(
         resume_warnings=resume_warnings,
         policy=policy,
         output=output,
+        context=context,
     )

@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+from codeagent.context.manager import ContextManager
 from codeagent.lifecycle import LifecycleState, RunPhase
 from codeagent.loop.budget import (
     BudgetTracker,
@@ -79,6 +80,7 @@ def run_agent_loop(
     interrupt: InterruptController | None = None,
     resume_warnings: list[str] | None = None,
     output: RunOutputObserver | None = None,
+    context: ContextManager | None = None,
 ) -> RunResult:
     del store, repo_root
     lifecycle_state = lifecycle or LifecycleState()
@@ -165,10 +167,26 @@ def run_agent_loop(
                 },
             )
 
+        tools = registry.list_specs()
+        request_system, request_messages = system, chat_history
+        if context is not None:
+            assembled = context.assemble(goal=goal, history=chat_history, tools=tools)
+            request_system, request_messages = assembled.system, assembled.messages
+            if assembled.compaction is not None:
+                chat_history = list(assembled.compaction.history)
+                if recorder is not None:
+                    recorder.emit(
+                        "context.compacted",
+                        {
+                            "action": assembled.compaction.action,
+                            "messages_after": len(chat_history),
+                        },
+                    )
+
         request = ModelRequest(
-            system=system,
-            messages=chat_history,
-            tools=registry.list_specs(),
+            system=request_system,
+            messages=request_messages,
+            tools=tools,
             model=model,
             max_output_tokens=max_output_tokens,
         )
