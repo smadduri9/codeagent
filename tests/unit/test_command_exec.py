@@ -1,11 +1,13 @@
 """run_command execution mechanics."""
 
+import io
 import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
+from codeagent.tools import command_exec
 from codeagent.tools.command_exec import filtered_environment, run_argv
 
 
@@ -96,3 +98,37 @@ def test_env_passthrough_but_never_secrets() -> None:
     base = {"PATH": "/bin", "FOO": "1", "GROQ_API_KEY": "k"}
     env = filtered_environment(base=base, passthrough=["FOO", "GROQ_API_KEY"])
     assert env == {"PATH": "/bin", "FOO": "1"}
+
+
+class _StuckProc:
+    """A process whose output pipe never closes, even after it is killed."""
+
+    pid = 999999
+    returncode: int | None = None
+
+    def __init__(self) -> None:
+        self.stdout = io.StringIO("")
+        self.killed = False
+
+    def poll(self) -> int | None:
+        return None
+
+    def communicate(self, timeout: float | None = None) -> tuple[str, None]:
+        raise subprocess.TimeoutExpired(cmd="stuck", timeout=timeout or 0)
+
+    def kill(self) -> None:
+        self.killed = True
+
+    def wait(self, timeout: float | None = None) -> int:
+        return 0
+
+
+def test_timeout_drain_cannot_hang(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(command_exec.subprocess, "Popen", lambda *a, **k: _StuckProc())
+    monkeypatch.setattr(command_exec.os, "killpg", lambda *a, **k: None)
+    result = run_argv(["stuck"], cwd=tmp_path, timeout_s=0.01, max_output_chars=200)
+    assert result.timed_out is True
+    assert "drain timed out" in result.combined_output
