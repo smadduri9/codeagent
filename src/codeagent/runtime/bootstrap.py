@@ -8,6 +8,7 @@ from typing import cast
 
 from codeagent.config import Settings
 from codeagent.context.instructions import load_instructions
+from codeagent.context.manager import ContextManager
 from codeagent.context.prompts import load_system_prompt
 from codeagent.loop.policy import PolicyGate
 from codeagent.permissions.approvals import ApprovalPrompt, ApprovalResponder
@@ -27,6 +28,11 @@ def build_system_prompt(repo_root: Path, settings: Settings) -> str:
     if loaded.text:
         system = f"{system}\n\n# Repository instructions\n\n{loaded.text}"
     return system
+
+
+def build_context_manager(repo_root: Path, settings: Settings) -> ContextManager:
+    loaded = load_instructions(repo_root, max_tokens=settings.tools.instructions_max_tokens)
+    return ContextManager(settings=settings, instructions=loaded.text or "")
 
 
 def build_tool_registry(

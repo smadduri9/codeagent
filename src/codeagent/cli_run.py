@@ -25,7 +25,12 @@ from codeagent.providers.base import Message, ModelEvent
 from codeagent.providers.factory import build_managed_provider
 from codeagent.providers.fake import FakeProvider
 from codeagent.providers.protocol import Provider
-from codeagent.runtime.bootstrap import build_policy_gate, build_system_prompt, build_tool_registry
+from codeagent.runtime.bootstrap import (
+    build_context_manager,
+    build_policy_gate,
+    build_system_prompt,
+    build_tool_registry,
+)
 from codeagent.state.session import abort_persisted_run, begin_persisted_run, run_with_persistence
 from codeagent.state.store import StateStore, default_state_db_path
 
@@ -141,6 +146,7 @@ def execute_agent_run(
             scripted=scripted,
         )
         system = build_system_prompt(repo_root, settings)
+        context = build_context_manager(repo_root, settings)
         iterations = max_iterations or settings.limits.max_iterations
         max_output = settings.request.max_output_tokens
 
@@ -158,6 +164,7 @@ def execute_agent_run(
                 policy=policy,
                 history=history,
                 output=renderer,
+                context=context,
             )
             console.print(f"[bold]run_id[/bold]: {ctx.run_id}")
         else:
