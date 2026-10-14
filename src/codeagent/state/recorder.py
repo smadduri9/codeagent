@@ -33,6 +33,10 @@ class RunRecorder:
         if self.emitter is not None:
             self.emitter.emit(name, payload)
 
+    def annotate(self, payload: dict[str, Any]) -> None:
+        if self.emitter is not None:
+            self.emitter.annotate(payload)
+
     def span(
         self,
         name: str,
