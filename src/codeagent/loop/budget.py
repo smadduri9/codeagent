@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from codeagent.loop.limits import RunLimits
 from codeagent.providers.base import Usage
@@ -31,6 +32,28 @@ class BudgetTracker:
     tokens_in: int = 0
     tokens_out: int = 0
     cost_usd: float = 0.0
+    warned: set[str] = field(default_factory=set)
+
+    def warnings(self) -> list[dict[str, Any]]:
+        """Return one entry per limit that reached 80% of its maximum since the last call."""
+        checks: dict[str, tuple[float, float]] = {
+            "tokens": (self.tokens_in + self.tokens_out, self.limits.max_total_tokens),
+            "tool_calls": (self.tool_calls, self.limits.max_tool_calls),
+            "runtime_minutes": (
+                (time.monotonic() - self.started_monotonic) / 60.0,
+                self.limits.max_runtime_minutes,
+            ),
+        }
+        if self.limits.cost_guard_enabled():
+            checks["cost_usd"] = (self.cost_usd, self.limits.max_cost_usd)
+        out: list[dict[str, Any]] = []
+        for name, (used, maximum) in checks.items():
+            if name in self.warned or maximum <= 0:
+                continue
+            if used >= 0.8 * maximum:
+                self.warned.add(name)
+                out.append({"limit": name, "used": used, "max": maximum})
+        return out
 
     def add_usage(self, usage: Usage) -> None:
         self.tokens_in += usage.input
