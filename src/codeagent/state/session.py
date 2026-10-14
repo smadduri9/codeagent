@@ -104,6 +104,9 @@ def can_resume_run(run: RunRecord) -> bool:
         return False
     if run.stop_reason in RESUMABLE_STOP_REASONS:
         return True
+    # A process that died mid-run never wrote a stop reason; its status stays unfinished.
+    if run.stop_reason is None and run.phase == RunPhase.WORKING.value:
+        return True
     return run.phase == RunPhase.WAITING_QUOTA.value
 
 
