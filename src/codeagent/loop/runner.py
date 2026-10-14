@@ -130,6 +130,7 @@ def run_agent_loop(
 
     if policy is not None and recorder is not None:
         policy.on_record = recorder.on_decision
+        policy.on_event = recorder.emit
 
     def _finish(
         phase: RunPhase,

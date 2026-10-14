@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 from codeagent.permissions.approvals import ApprovalResponder, ApprovalStore, resolve_ask
 from codeagent.permissions.engine import decide
@@ -32,6 +33,18 @@ class PolicyGate:
     decisions: list[RecordedDecision] = field(default_factory=list)
     executed_calls: list[ToolCall] = field(default_factory=list)
     on_record: Callable[[RecordedDecision], None] | None = None
+    on_event: Callable[[str, dict[str, Any]], None] | None = None
+
+    def _emit(self, name: str, payload: dict[str, Any]) -> None:
+        if self.on_event is not None:
+            self.on_event(name, payload)
+
+    def _outcome(self, decision: Decision) -> str:
+        if isinstance(decision, Deny):
+            return "denied"
+        if self.approval_prompt is not None and self.approval_prompt.choice == "session":
+            return "session"
+        return "approved"
 
     def evaluate(self, call: ToolCall) -> tuple[Decision, str | None]:
         """Validate arguments, decide, record, and resolve approvals."""
@@ -46,12 +59,25 @@ class PolicyGate:
             interactive=self.run.interactive,
         )
         if isinstance(decision, Ask) and self.approval_prompt is not None:
+            self._emit(
+                "approval.requested",
+                {
+                    "tool": call.name,
+                    "call_id": call.id,
+                    "reason": decision.reason,
+                    "risk_level": decision.risk_level,
+                },
+            )
             decision = resolve_ask(
                 call,
                 decision,
                 prompt=self.approval_prompt,
                 store=self.approval_store,
                 session_allowed_hashes=self.run.session_allowed_hashes,
+            )
+            self._emit(
+                "approval.resolved",
+                {"tool": call.name, "call_id": call.id, "outcome": self._outcome(decision)},
             )
         elif isinstance(decision, Ask):
             decision = resolve_non_interactive(decision, interactive=False)
