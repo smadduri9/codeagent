@@ -87,7 +87,7 @@ def handle_bash(ctx: CommandToolContext, args: BashArgs) -> ToolResult:
             truncated=False,
         )
     result = execute_argv(
-        ["/bin/bash", "-lc", command],
+        ["/bin/bash", "--noprofile", "--norc", "-c", command],
         cwd=ctx.workspace,
         timeout_s=args.timeout_s,
         env=None,
