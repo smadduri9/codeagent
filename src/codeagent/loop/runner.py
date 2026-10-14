@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import signal
 import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
@@ -114,6 +116,12 @@ def _emit_budget_warnings(budget: BudgetTracker, recorder: RunRecorder | None) -
         return
     for warning in budget.warnings():
         recorder.emit("budget.warning", warning)
+
+
+def _maybe_crash(stage: str) -> None:
+    """Test-only hook: SIGKILL this process at a named stage. See decision 0013."""
+    if os.environ.get("CODEAGENT_TEST_CRASH_AT") == stage:
+        os.kill(os.getpid(), signal.SIGKILL)
 
 
 def _emit_tool_failure(
@@ -412,6 +420,7 @@ def run_agent_loop(
                             {"tool": call.name, "call_id": call.id},
                         )
                     sink.on_tool_start(call.name)
+                    _maybe_crash("tool_started")
                     timer = ToolTimer()
                     result = policy.execute_allowed(call, decision)
                     sink.on_tool_end(call.name, result.ok)
@@ -504,6 +513,7 @@ def run_agent_loop(
                         {"tool": call.name, "call_id": call.id},
                     )
                 sink.on_tool_start(call.name)
+                _maybe_crash("tool_started")
                 timer = ToolTimer()
                 try:
                     result = registry.run(call)
