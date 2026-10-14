@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from json import dumps
 
 from codeagent.config import Settings
@@ -26,6 +26,7 @@ class AssembledContext:
     prompt_hash: str
     estimated_input_tokens: int
     compaction: CompactionResult | None = None
+    breakdown: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -87,6 +88,20 @@ class ContextManager:
             + estimate_tool_specs_tokens(tools)
             + estimate_messages_tokens(messages)
         )
+        tool_results = estimate_messages_tokens(
+            [m for m in messages if m.role is MessageRole.TOOL],
+        )
+        summary = estimate_messages_tokens(
+            [m for m in messages if (m.content or "").startswith("[summary")],
+        )
+        breakdown = {
+            "system_base": estimate_text_tokens(load_system_prompt()),
+            "instructions": estimate_text_tokens(self.instructions),
+            "tools": estimate_tool_specs_tokens(tools),
+            "tool_results": tool_results,
+            "summary": summary,
+            "history": estimate_messages_tokens(messages) - tool_results - summary,
+        }
         self.compaction_state = compaction.state
         return AssembledContext(
             system=system,
@@ -96,6 +111,7 @@ class ContextManager:
             prompt_hash=full_prompt_hash,
             estimated_input_tokens=estimated,
             compaction=compaction if compaction.compacted else None,
+            breakdown=breakdown,
         )
 
     def needs_compaction_before_request(
