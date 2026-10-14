@@ -140,6 +140,7 @@ class Price(ConfigModel):
     input: Nonnegative
     output: Nonnegative
     cache_read: Nonnegative
+    cache_write: Nonnegative
 
 
 class Settings(ConfigModel):
