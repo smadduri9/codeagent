@@ -33,6 +33,8 @@ def _scan_issues(command: str) -> list[ShellParseIssue]:
         issues.append(ShellParseIssue("heredoc", "heredoc"))
     if _EVAL_RE.search(command):
         issues.append(ShellParseIssue("eval", "eval"))
+    if any((ord(ch) < 32 and ch != "\t") or ch == "\x7f" for ch in command):
+        issues.append(ShellParseIssue("control_char", "newline or control character"))
     try:
         shlex.split(command, posix=True)
     except ValueError as exc:
