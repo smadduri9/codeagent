@@ -1,6 +1,7 @@
 """Run lock acquire, stale recovery, and teardown."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -141,3 +142,15 @@ def test_trace_shows_summary_when_no_events(
     assert result.exit_code == 0
     assert rid in result.stdout
     assert "no trace events" in result.stdout
+
+
+def test_acquire_fails_if_file_appears_after_check(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = RunLock.lock_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"run_id": "other", "pid": os.getpid()}), encoding="utf-8")
+    monkeypatch.setattr(Path, "exists", lambda self: False)  # simulate the race window
+    with pytest.raises(RunLockError):
+        RunLock.acquire(tmp_path, "mine")

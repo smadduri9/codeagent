@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,8 +63,13 @@ class RunLock:
             else:
                 other = payload.get("run_id", "unknown")
                 raise RunLockError(f"another run is active: {other}")
-        payload = {"run_id": run_id, "pid": os.getpid()}
-        path.write_text(json.dumps(payload), encoding="utf-8")
+        payload = {"run_id": run_id, "pid": os.getpid(), "started_at": time.time()}
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            raise RunLockError("another run acquired the lock concurrently") from None
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload))
         return cls(path=path, run_id=run_id)
 
     def release(self) -> None:
