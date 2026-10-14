@@ -404,6 +404,16 @@ class StateStore:
             conn.execute("ROLLBACK")
             raise
 
+    def list_incomplete_tool_calls(self, run_id: str) -> list[sqlite3.Row]:
+        """Tool calls that were recorded as started but never completed."""
+        conn = self.connect()
+        return list(
+            conn.execute(
+                "SELECT * FROM tool_calls WHERE run_id = ? AND ok IS NULL ORDER BY id ASC",
+                (run_id,),
+            ).fetchall(),
+        )
+
     def list_tool_calls(self, run_id: str) -> list[sqlite3.Row]:
         conn = self.connect()
         return list(
