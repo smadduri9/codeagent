@@ -96,7 +96,7 @@ def test_arrays_replace_and_model_tables_merge(paths: tuple[Path, Path]) -> None
     repo, user = paths
     write_config(
         user,
-        '[model]\nfallbacks=["first"]\n[prices.test]\ninput=0.0\noutput=0.0\ncache_read=0.0\n'
+        '[model]\nfallbacks=["first"]\n[prices.test]\ninput=0.0\noutput=0.0\ncache_read=0.0\ncache_write=0.0\n'
         "[rate_limits.test]\nrpm=30\nrpd=1000\ntpm=8000\ntpd=200000",
     )
     write_config(repo / ".codeagent", "[model]\nfallbacks=[]\n[rate_limits.test]\nrpm=5")

@@ -10,7 +10,7 @@ def prices_active(settings: Settings) -> bool:
     if not settings.prices:
         return False
     return any(
-        price.input > 0 or price.output > 0 or price.cache_read > 0
+        price.input > 0 or price.output > 0 or price.cache_read > 0 or price.cache_write > 0
         for price in settings.prices.values()
     )
 
@@ -26,6 +26,7 @@ def compute_cost(model: str, usage: Usage, settings: Settings) -> tuple[float | 
         usage.input * price.input
         + usage.output * price.output
         + usage.cache_read * price.cache_read
+        + usage.cache_write * price.cache_write
     ) / 1_000_000
     return usd, None
 

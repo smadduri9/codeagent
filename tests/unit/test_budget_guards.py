@@ -71,7 +71,7 @@ def test_budget_guard_max_cost_usd() -> None:
     limits = RunLimits.from_settings(
         Settings(
             limits=LimitSettings(max_cost_usd=0.000001),
-            prices={"m": Price(input=1.0, output=1.0, cache_read=0.0)},
+            prices={"m": Price(input=1.0, output=1.0, cache_read=0.0, cache_write=0.0)},
         ),
         "m",
     )
