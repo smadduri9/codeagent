@@ -137,9 +137,14 @@ CREATE TABLE IF NOT EXISTS quota_state (
 );
 """
 
+MIGRATION_3 = """
+ALTER TABLE events ADD COLUMN parent_span_id TEXT;
+"""
+
 MIGRATIONS: Sequence[tuple[int, str]] = (
     (1, MIGRATION_1),
     (2, MIGRATION_2),
+    (3, MIGRATION_3),
 )
 
 
@@ -174,6 +179,7 @@ def apply_migrations(connection: sqlite3.Connection) -> int:
             "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
             (migration_version, _utc_now()),
         )
+        connection.commit()
         applied += 1
         version = migration_version
     return version if applied == 0 else current_schema_version(connection)

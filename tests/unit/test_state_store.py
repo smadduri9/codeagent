@@ -14,8 +14,8 @@ def test_migrations_apply_on_empty_database(tmp_path: Path) -> None:
     db = tmp_path / "state.db"
     conn = sqlite3.connect(db)
     version = apply_migrations(conn)
-    assert version == 2
-    assert current_schema_version(conn) == 2
+    assert version == 3
+    assert current_schema_version(conn) == 3
     conn.close()
 
 
@@ -25,7 +25,7 @@ def test_migrations_apply_on_existing_database(tmp_path: Path) -> None:
     apply_migrations(conn)
     conn.close()
     conn = sqlite3.connect(db)
-    assert apply_migrations(conn) == 2
+    assert apply_migrations(conn) == 3
     conn.close()
 
 
