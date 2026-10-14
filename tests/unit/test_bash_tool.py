@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from codeagent.config import Settings
 from codeagent.loop import run_agent_loop
 from codeagent.loop.policy import PolicyGate
@@ -94,3 +96,22 @@ def test_bash_loop_denies_rm_without_approval(tmp_path: Path) -> None:
     assert executed == []
     tool_msgs = [m for m in result.history if m.role is MessageRole.TOOL]
     assert tool_msgs
+
+
+def test_bash_does_not_load_login_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".bash_profile").write_text("export CODEAGENT_PROFILE_LOADED=1\n")
+    (home / ".profile").write_text("export CODEAGENT_PROFILE_LOADED=1\n")
+    monkeypatch.setenv("HOME", str(home))
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    registry = _registry_with_bash(workspace)
+    call = ToolCall(
+        id="1",
+        name="bash",
+        args={"command": 'echo "${CODEAGENT_PROFILE_LOADED:-unset}"'},
+    )
+    result = registry.run(call)
+    assert result.ok
+    assert "unset" in result.content
