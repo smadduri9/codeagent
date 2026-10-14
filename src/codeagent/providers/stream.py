@@ -2,7 +2,6 @@
 
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from json import loads
 
 from codeagent.providers.base import (
     ModelEvent,
@@ -55,12 +54,6 @@ def collect_stream(
             reply.usage = event.usage
         elif isinstance(event, Stop):
             reply.stop_reason = event.reason
-    for call_id, name in list(pending_names.items()):
-        raw = pending_args.get(call_id, "")
-        args: dict[str, object] = {}
-        if raw:
-            parsed = loads(raw)
-            if isinstance(parsed, dict):
-                args = parsed
-        reply.tool_calls.append(ToolCall(id=call_id, name=name, args=args))
+    # Calls that never received ToolCallEnd come from a truncated stream or a
+    # malformed argument string. They are dropped, never executed.
     return reply
