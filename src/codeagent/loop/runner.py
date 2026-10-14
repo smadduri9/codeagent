@@ -33,6 +33,7 @@ from codeagent.providers.base import (
     ToolCall,
 )
 from codeagent.providers.protocol import Provider
+from codeagent.providers.quota_errors import ProviderError
 from codeagent.providers.stream import ModelReply, collect_stream
 from codeagent.state.recorder import RunRecorder, ToolTimer
 from codeagent.state.store import StateStore
@@ -296,11 +297,15 @@ def run_agent_loop(
         )
         with _span(recorder, "model.call", {"model": model, "iteration": iteration}):
             started = time.perf_counter()
-            reply = collect_stream(
-                provider.stream(request),
-                on_text_delta=sink.on_text_delta,
-                on_tool_announced=sink.on_tool_announced,
-            )
+            try:
+                reply = collect_stream(
+                    provider.stream(request),
+                    on_text_delta=sink.on_text_delta,
+                    on_tool_announced=sink.on_tool_announced,
+                )
+            except ProviderError:
+                lifecycle_state.transition(RunPhase.STOPPED)
+                return _finish(RunPhase.STOPPED, "provider_error")
             sink.on_model_turn_end()
             latency_ms = int((time.perf_counter() - started) * 1000)
             if recorder is not None:
