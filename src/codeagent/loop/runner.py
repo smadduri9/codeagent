@@ -34,7 +34,7 @@ from codeagent.providers.base import (
 )
 from codeagent.providers.protocol import Provider
 from codeagent.providers.quota_errors import ProviderError
-from codeagent.providers.stream import collect_stream
+from codeagent.providers.stream import ModelReply, collect_stream
 from codeagent.state.recorder import RunRecorder, ToolTimer
 from codeagent.state.store import StateStore
 from codeagent.tools.registry import ToolRegistry, ToolValidationError, UnknownToolError
@@ -114,6 +114,33 @@ def _emit_budget_warnings(budget: BudgetTracker, recorder: RunRecorder | None) -
         return
     for warning in budget.warnings():
         recorder.emit("budget.warning", warning)
+
+
+def _annotate_model_call(
+    recorder: RunRecorder,
+    reply: ModelReply,
+    *,
+    started: float,
+    latency_ms: int,
+    breakdown: dict[str, int],
+    prefix_hash: str | None,
+) -> None:
+    usage = reply.usage
+    annotations: dict[str, Any] = {f"est.{key}": value for key, value in breakdown.items()}
+    annotations["latency.total_ms"] = latency_ms
+    annotations["latency.ttft_ms"] = (
+        int((reply.first_event_at - started) * 1000) if reply.first_event_at is not None else None
+    )
+    annotations["stop_reason"] = reply.stop_reason.value if reply.stop_reason else None
+    annotations["prefix_hash"] = prefix_hash
+    if usage is not None:
+        annotations["usage.input"] = usage.input
+        annotations["usage.output"] = usage.output
+        annotations["usage.cache_read"] = usage.cache_read
+        annotations["usage.cache_write"] = usage.cache_write
+        if usage.input > 0 and breakdown:
+            annotations["est_error"] = (sum(breakdown.values()) - usage.input) / usage.input
+    recorder.annotate(annotations)
 
 
 def _emit_tool_failure(
@@ -243,9 +270,13 @@ def run_agent_loop(
 
         tools = registry.list_specs()
         request_system, request_messages = system, chat_history
+        breakdown: dict[str, int] = {}
+        prefix_hash: str | None = None
         if context is not None:
             assembled = context.assemble(goal=goal, history=chat_history, tools=tools)
             request_system, request_messages = assembled.system, assembled.messages
+            breakdown = assembled.breakdown
+            prefix_hash = assembled.stable_prefix_hash
             if assembled.compaction is not None:
                 chat_history = list(assembled.compaction.history)
                 if recorder is not None:
@@ -277,6 +308,15 @@ def run_agent_loop(
                 return _finish(RunPhase.STOPPED, "provider_error")
             sink.on_model_turn_end()
             latency_ms = int((time.perf_counter() - started) * 1000)
+            if recorder is not None:
+                _annotate_model_call(
+                    recorder,
+                    reply,
+                    started=started,
+                    latency_ms=latency_ms,
+                    breakdown=breakdown,
+                    prefix_hash=prefix_hash,
+                )
 
             if recorder is not None:
                 usage = reply.usage
