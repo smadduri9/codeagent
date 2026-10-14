@@ -6,7 +6,7 @@ import os
 import signal
 import subprocess
 import time
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +22,23 @@ _BLOCKED_ENV_EXACT = frozenset(
     },
 )
 _BLOCKED_ENV_SUFFIXES = ("_API_KEY", "_SECRET", "_TOKEN", "_PASSWORD")
+_BASE_ALLOWED = frozenset(
+    {
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "SHELL",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TERM",
+        "TMPDIR",
+        "TZ",
+        "PYTHONPATH",
+        "VIRTUAL_ENV",
+    },
+)
 
 
 @dataclass(frozen=True)
@@ -41,21 +58,25 @@ def _is_blocked_env_key(key: str) -> bool:
     return any(upper.endswith(suffix) for suffix in _BLOCKED_ENV_SUFFIXES)
 
 
+def _is_allowed_env_key(key: str, passthrough: Collection[str]) -> bool:
+    if _is_blocked_env_key(key):
+        return False
+    return key in _BASE_ALLOWED or key.startswith("LC_") or key in passthrough
+
+
 def filtered_environment(
     base: Mapping[str, str] | None = None,
     extra: Mapping[str, str] | None = None,
+    *,
+    passthrough: Collection[str] = (),
 ) -> dict[str, str]:
-    """Build a child environment without provider or secret variables."""
+    """Build a child environment from an allowlist; secret-looking keys never pass."""
     source = dict(os.environ if base is None else base)
-    for key in list(source):
-        if _is_blocked_env_key(key):
-            del source[key]
-    if extra:
-        for key, value in extra.items():
-            if _is_blocked_env_key(key):
-                continue
-            source[key] = value
-    return source
+    result = {k: v for k, v in source.items() if _is_allowed_env_key(k, passthrough)}
+    for key, value in (extra or {}).items():
+        if not _is_blocked_env_key(key):
+            result[key] = value
+    return result
 
 
 def _kill_process_group(proc: subprocess.Popen[str]) -> None:
