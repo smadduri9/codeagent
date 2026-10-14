@@ -1,5 +1,9 @@
 """AnthropicProvider passes the shared contract checks with a fake SDK client."""
 
+import subprocess
+import sys
+import types
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -78,3 +82,27 @@ def test_missing_sdk_or_key_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) ->
     )
     with pytest.raises(ProviderError):
         list(provider.stream(req))
+
+
+def test_key_is_read_from_repo_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / ".env").write_text("ANTHROPIC_API_KEY=test-key-not-real\n", encoding="utf-8")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    seen: dict[str, str] = {}
+
+    class _Anthropic:
+        def __init__(self, *, api_key: str) -> None:
+            seen["key"] = api_key
+            self.messages = _Messages(_TEXT_EVENTS)
+
+    monkeypatch.setitem(sys.modules, "anthropic", types.SimpleNamespace(Anthropic=_Anthropic))
+    provider = AnthropicProvider(start_dir=tmp_path, user_dir=tmp_path / "no-home")
+    req = ModelRequest(
+        system="s",
+        messages=[Message(role=MessageRole.USER, content="hi")],
+        tools=[],
+        model="m",
+        max_output_tokens=8,
+    )
+    list(provider.stream(req))
+    assert seen["key"] == "test-key-not-real"
