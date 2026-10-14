@@ -31,6 +31,10 @@ def eval_command(
         int | None,
         typer.Option("--quota-stop", help="Stop after N live tasks."),
     ] = 3,
+    repeats: Annotated[
+        int,
+        typer.Option("--repeats", min=1, help="Runs per task; each run is recorded."),
+    ] = 1,
 ) -> None:
     """Run evaluation tasks in replay or live mode."""
     from evals.gate_analysis import assess_gate
@@ -46,6 +50,7 @@ def eval_command(
         resume=resume,
         quota_stop_after=quota,
         slice_name=slice_name or ("core12" if live else None),
+        repeats=repeats,
     )
     aggregated_ok = sum(1 for row in state.results if row.ok)
     console.print(f"eval complete: {aggregated_ok}/{len(state.results)} runs recorded")
