@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,15 @@ class RunRecorder:
     def emit(self, name: str, payload: dict[str, Any] | None = None) -> None:
         if self.emitter is not None:
             self.emitter.emit(name, payload)
+
+    def span(
+        self,
+        name: str,
+        payload: dict[str, Any] | None = None,
+    ) -> AbstractContextManager[object]:
+        if self.emitter is None:
+            return nullcontext()
+        return self.emitter.span(name, payload)
 
     def on_phase(self, phase: RunPhase) -> None:
         self.store.update_run_phase(self.run_id, phase)
