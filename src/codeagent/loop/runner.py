@@ -94,6 +94,27 @@ def _emit_verification(
     recorder.emit("verification.completed", {"passed": passed, "failed": failed})
 
 
+_FILE_TOOLS = frozenset({"write_file", "edit_file", "move_path", "delete_path"})
+
+
+def _emit_file_changed(
+    recorder: RunRecorder | None,
+    call: ToolCall,
+    ok: bool,
+) -> None:
+    if recorder is None or not ok or call.name not in _FILE_TOOLS:
+        return
+    path = call.args.get("dst") if call.name == "move_path" else call.args.get("path")
+    recorder.emit("file.changed", {"tool": call.name, "path": str(path)})
+
+
+def _emit_budget_warnings(budget: BudgetTracker, recorder: RunRecorder | None) -> None:
+    if recorder is None:
+        return
+    for warning in budget.warnings():
+        recorder.emit("budget.warning", warning)
+
+
 def _emit_tool_failure(
     recorder: RunRecorder,
     tool: str,
@@ -198,6 +219,7 @@ def run_agent_loop(
 
         if budget is not None:
             budget_guard = budget.check()
+            _emit_budget_warnings(budget, recorder)
             if budget_guard.stop:
                 lifecycle_state.transition(RunPhase.STOPPED)
                 return _finish(
@@ -268,6 +290,7 @@ def run_agent_loop(
         if budget is not None and reply.usage is not None:
             budget.add_usage(reply.usage)
             budget_guard = budget.check()
+            _emit_budget_warnings(budget, recorder)
             if budget_guard.stop:
                 lifecycle_state.transition(RunPhase.STOPPED)
                 return _finish(
@@ -401,6 +424,7 @@ def run_agent_loop(
                         )
                         _emit_tool_failure(recorder, call.name, result.ok, result.content)
                         _emit_verification(recorder, call, result.content)
+                        _emit_file_changed(recorder, call, result.ok)
                 if budget is not None:
                     budget.on_tool_completed()
                 tool_messages.append(
@@ -498,6 +522,7 @@ def run_agent_loop(
                     )
                     _emit_tool_failure(recorder, call.name, result.ok, result.content)
                     _emit_verification(recorder, call, result.content)
+                    _emit_file_changed(recorder, call, result.ok)
             if budget is not None:
                 budget.on_tool_completed()
             tool_messages.append(
