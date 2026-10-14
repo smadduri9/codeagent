@@ -11,6 +11,7 @@ import yaml
 
 from codeagent.providers.quota_errors import ContextOverflowError, QuotaExhaustedError
 from evals.live_agent import LiveTaskMetrics, run_live_task
+from evals.manifest import build_manifest, write_manifest
 from evals.task_validate import run_check
 
 
@@ -26,6 +27,7 @@ class EvalResult:
     runs: int = 1
     model_calls: int = 0
     search_calls: int = 0
+    repeat: int = 0
 
 
 @dataclass
@@ -97,6 +99,15 @@ def run_eval(
         state.completed = set(raw.get("completed", []))
         state.results = [EvalResult(**row) for row in raw.get("results", [])]
     task_dirs = list_task_dirs(tasks_dir, slice_name=slice_name)
+    write_manifest(
+        output_dir,
+        build_manifest(
+            task_ids=[str(load_task(d / "task.yaml").get("id", d.name)) for d in task_dirs],
+            mode=mode,
+            repeats=max(1, repeats),
+            repo_root=tasks_dir,
+        ),
+    )
     live_runs = 0
     live_metrics: list[LiveTaskMetrics] = []
     quota_exhausted = False
@@ -109,7 +120,7 @@ def run_eval(
             break
         if quota_exhausted:
             break
-        for _ in range(max(1, repeats)):
+        for repeat in range(max(1, repeats)):
             start = time.monotonic()
             error: str | None = None
             model_calls = 0
@@ -150,6 +161,7 @@ def run_eval(
                     error=error,
                     model_calls=model_calls,
                     search_calls=search_calls,
+                    repeat=repeat,
                 )
             )
             if quota_exhausted:

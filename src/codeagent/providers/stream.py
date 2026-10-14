@@ -1,5 +1,6 @@
 """Collect streaming provider events into a single model reply."""
 
+import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
@@ -23,6 +24,7 @@ class ModelReply:
     tool_calls: list[ToolCall] = field(default_factory=list)
     usage: Usage | None = None
     stop_reason: StopReason | None = None
+    first_event_at: float | None = None
 
 
 def collect_stream(
@@ -35,6 +37,8 @@ def collect_stream(
     pending_args: dict[str, str] = {}
     pending_names: dict[str, str] = {}
     for event in events:
+        if reply.first_event_at is None and isinstance(event, (TextDelta, ToolCallStart)):
+            reply.first_event_at = time.perf_counter()
         if isinstance(event, TextDelta):
             reply.content += event.text
             if on_text_delta is not None and event.text:
