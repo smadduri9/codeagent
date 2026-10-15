@@ -35,6 +35,11 @@ class PolicyGate:
     on_record: Callable[[RecordedDecision], None] | None = None
     on_event: Callable[[str, dict[str, Any]], None] | None = None
 
+    def _record(self, record: RecordedDecision) -> None:
+        self.decisions.append(record)
+        if self.on_record is not None:
+            self.on_record(record)
+
     def _emit(self, name: str, payload: dict[str, Any]) -> None:
         if self.on_event is not None:
             self.on_event(name, payload)
@@ -51,7 +56,11 @@ class PolicyGate:
         try:
             validated = self.registry.validate(call)
         except (ToolValidationError, UnknownToolError) as exc:
-            return Deny(str(exc)), None
+            # Record the denial like any other decision: the loop completes every
+            # recorded call, and an unrecorded one crashed persisted runs.
+            denied = Deny(f"invalid tool call: {exc}")
+            self._record(RecordedDecision(call=call, decision=denied))
+            return denied, denied.reason
 
         raw_decision = decide(call, validated, self.run)
         decision = resolve_non_interactive(
@@ -82,10 +91,7 @@ class PolicyGate:
         elif isinstance(decision, Ask):
             decision = resolve_non_interactive(decision, interactive=False)
 
-        record = RecordedDecision(call=call, decision=decision)
-        self.decisions.append(record)
-        if self.on_record is not None:
-            self.on_record(record)
+        self._record(RecordedDecision(call=call, decision=decision))
 
         deny_message: str | None = None
         if isinstance(decision, Deny):
