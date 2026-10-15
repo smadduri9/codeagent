@@ -39,6 +39,7 @@ from codeagent.providers.quota_errors import ProviderError
 from codeagent.providers.stream import ModelReply, collect_stream
 from codeagent.state.recorder import RunRecorder, ToolTimer
 from codeagent.state.store import StateStore
+from codeagent.tools.base import ToolResult
 from codeagent.tools.registry import ToolRegistry, ToolValidationError, UnknownToolError
 from codeagent.tools.truncate import truncate_content
 
@@ -109,6 +110,39 @@ def _emit_file_changed(
         return
     path = call.args.get("dst") if call.name == "move_path" else call.args.get("path")
     recorder.emit("file.changed", {"tool": call.name, "path": str(path)})
+
+
+_EDIT_TOOLS = frozenset({"write_file", "edit_file"})
+
+
+def _is_pytest_command(call: ToolCall) -> bool:
+    """True for a ``run_command`` that runs ``pytest`` or ``python -m pytest``."""
+    argv = call.args.get("argv") if call.name == "run_command" else None
+    if not isinstance(argv, list) or not argv:
+        return False
+    parts = [str(part) for part in argv]
+    program = Path(parts[0]).name
+    if program == "pytest":
+        return True
+    return program.startswith("python") and parts[1:3] == ["-m", "pytest"]
+
+
+def _note_completion_effects(
+    gate: CompletionGate,
+    call: ToolCall,
+    result: ToolResult,
+    changed_files: list[str],
+) -> None:
+    """Feed successful edits and test runs to the completion gate (both execution paths)."""
+    if not result.ok:
+        return
+    if call.name in _EDIT_TOOLS:
+        gate.note_edit()
+        path_arg = call.args.get("path")
+        if isinstance(path_arg, str):
+            changed_files.append(path_arg)
+    if call.name in _VERIFICATION_TOOLS or (_is_pytest_command(call) and result.exit_code == 0):
+        gate.note_verification_pass()
 
 
 def _emit_budget_warnings(budget: BudgetTracker, recorder: RunRecorder | None) -> None:
@@ -480,6 +514,7 @@ def run_agent_loop(
                     timer = ToolTimer()
                     result = policy.execute_allowed(call, decision)
                     sink.on_tool_end(call.name, result.ok)
+                    _note_completion_effects(gate, call, result, changed_files)
                     body, _truncated = truncate_content(
                         policy.wrap_result(result),
                         max_output_chars,
@@ -577,13 +612,7 @@ def run_agent_loop(
                 except (ToolValidationError, UnknownToolError) as exc:
                     result = registry.tool_error(call, str(exc))
                 sink.on_tool_end(call.name, result.ok)
-                if call.name in {"write_file", "edit_file"} and result.ok:
-                    gate.note_edit()
-                    path_arg = call.args.get("path")
-                    if isinstance(path_arg, str):
-                        changed_files.append(path_arg)
-                if call.name in {"run_verification", "run_tests"} and result.ok:
-                    gate.note_verification_pass()
+                _note_completion_effects(gate, call, result, changed_files)
                 body, _truncated = truncate_content(result.content, max_output_chars, keep="tail")
                 if recorder is not None:
                     recorder.complete_tool(
