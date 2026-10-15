@@ -110,17 +110,27 @@ Shell strings cannot be proven safe by parsing; `run_command` uses argument arra
 
 ## Testing and evaluation
 
-- **442** pytest cases in the default check script (live tests excluded); **7** security test modules under `tests/security/`.
+- **583** pytest cases in the default check script (live tests excluded); **7** security test modules under `tests/security/`; a reliability suite under `tests/reliability/` (injected provider faults, and a process killed mid tool call then resumed).
+- Tests cannot open network connections unless marked `live`.
 - CI on **Ubuntu** and **macOS**: Ruff, strict mypy, pytest (live tests excluded), and `scripts/scan_secrets.sh`.
 
 Evaluation ([DESIGN.md](DESIGN.md) section 11):
 
-| Tier | Result | Notes |
-|------|--------|--------|
-| Scripted replay (40 tasks + harness smoke) | **42/42** pass in CI | Drives `FakeProvider` through the real loop, tools, and permissions; see [evals/baselines/replay-40/](evals/baselines/replay-40/) |
-| Live `core12` slice | Optional, quota-aware | Run locally with `codeagent eval --live --slice core12 --resume`; resumes across days under Groq free-tier limits. Use for model comparison, not as a published pass rate. |
+**SWE-bench Lite, 30-task subset, Claude Haiku 5.5** ([full report](evals/baselines/2026-10-15-swe30-haiku.md)). The tasks are 10 easy, 10 medium and 10 hard, each checked to fail before and pass after the reference fix. Grading runs the hidden failing tests after the agent finishes.
 
-Replay is the regression gate in CI. Live slices exercise real models when you have quota; details and baselines live under [evals/baselines/](evals/baselines/).
+| Run | Solved | 95% CI | Cost | Cost per solved |
+|------|--------|--------|------|-----------------|
+| Baseline, run 1 | 12/30 | 25–58% | $0.23 | $0.019 |
+| Baseline, run 2 (identical repeat) | 12/30 | 25–58% | $0.27 | $0.022 |
+| Compaction forced at 8K tokens | 13/30 | 27–61% | $0.25 | $0.019 |
+
+Identical runs flipped 6 of 30 task outcomes, and every paired difference above has McNemar p = 1.0. Treat any harness change smaller than that noise as unmeasured. These runs also exposed three bugs, now fixed and listed in the report. Local environments are used, not the official SWE-bench images, so the numbers are not comparable to leaderboard results.
+
+| Other tier | Result | Notes |
+|------|--------|--------|
+| Scripted replay (40 tasks + harness smoke) | **42/42** in CI | A plumbing regression gate: `FakeProvider` drives the real loop, tools and permissions with scripted turns. It does not measure model capability. See [evals/baselines/replay-40/](evals/baselines/replay-40/). |
+
+Live runs use `python -m evals.swebench_live --out <dir> --cap <usd>`. The cap is enforced before every model call.
 
 ## Design decisions and scope
 
