@@ -38,3 +38,9 @@ def test_selection_is_deterministic_and_filtered() -> None:
     flat = [i for ids in first.values() for i in ids]
     assert not any(i.startswith("django") for i in flat)
     assert not any(i.startswith("sympy-10") for i in flat)
+
+
+def test_excluded_ids_are_never_picked() -> None:
+    rows = [_row(i, "sympy/sympy", 2) for i in range(10)]
+    picked = select(rows, caps={"sympy/sympy": 10}, per_tier=3, exclude=frozenset({"sympy-3"}))
+    assert "sympy-3" not in [i for ids in picked.values() for i in ids]

@@ -55,8 +55,20 @@ def load_instances(jsonl_path: Path, instance_ids: list[str]) -> list[SweInstanc
 
 
 def check_command(inst: SweInstance) -> list[str]:
-    """The command that must pass for the instance to count as solved."""
-    return ["python", "-m", "pytest", "-q", *inst.fail_to_pass]
+    """The command that must pass for the instance to count as solved.
+
+    Node ids are used as given. Sympy lists bare test names instead, so those run
+    as the patched test files filtered with -k.
+    """
+    if all("::" in t or "/" in t for t in inst.fail_to_pass):
+        return ["python", "-m", "pytest", "-q", *inst.fail_to_pass]
+    files = [
+        line[len("+++ b/") :]
+        for line in inst.test_patch.splitlines()
+        if line.startswith("+++ b/") and line.endswith(".py")
+    ]
+    names = " or ".join(sorted(set(inst.fail_to_pass)))
+    return ["python", "-m", "pytest", "-q", *files, "-k", names]
 
 
 def repo_url(repo: str) -> str:
