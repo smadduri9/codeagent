@@ -7,7 +7,7 @@
 
 A local, CLI-based autonomous coding agent. The model reasons; deterministic software searches, executes, constrains, verifies, persists, and observes.
 
-Built in Python 3.12 with an OpenAI-compatible provider (Groq by default). See [DESIGN.md](DESIGN.md) for the full specification and [docs/OPERATOR.md](docs/OPERATOR.md) for day-to-day usage.
+Built in Python 3.12. The CLI uses an OpenAI-compatible provider (Groq by default); the live evaluations below use Anthropic Claude through `evals/`. See [DESIGN.md](DESIGN.md) for the full specification and [docs/OPERATOR.md](docs/OPERATOR.md) for day-to-day usage.
 
 ## What it does
 
@@ -110,7 +110,7 @@ Shell strings cannot be proven safe by parsing; `run_command` uses argument arra
 
 ## Testing and evaluation
 
-- **583** pytest cases in the default check script (live tests excluded); **7** security test modules under `tests/security/`; a reliability suite under `tests/reliability/` (injected provider faults, and a process killed mid tool call then resumed).
+- **589** pytest cases in the default check script (live tests excluded); **7** security test modules under `tests/security/`; a reliability suite under `tests/reliability/` (injected provider faults, and a process killed mid tool call then resumed).
 - Tests cannot open network connections unless marked `live`.
 - CI on **Ubuntu** and **macOS**: Ruff, strict mypy, pytest (live tests excluded), and `scripts/scan_secrets.sh`.
 
