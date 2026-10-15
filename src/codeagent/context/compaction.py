@@ -81,8 +81,16 @@ def summarize_prefix(
     if keep_turns <= 0:
         return [Message(role=MessageRole.USER, content=summary_text), *history]
     tail_start = max(0, len(history) - keep_turns)
-    tail = history[tail_start:]
-    return [Message(role=MessageRole.USER, content=summary_text), *tail]
+    # A tool result must follow the assistant message that made the call; never
+    # start the kept tail inside a tool exchange.
+    while tail_start > 0 and history[tail_start].role is MessageRole.TOOL:
+        tail_start -= 1
+    # Keep the original goal: the summary says it is preserved.
+    head = (
+        [history[0]] if tail_start > 0 and history and history[0].role is MessageRole.USER else []
+    )
+    summary = Message(role=MessageRole.USER, content=summary_text)
+    return [*head, summary, *history[tail_start:]]
 
 
 def build_handoff_summary(*, goal: str, history: list[Message]) -> str:

@@ -10,7 +10,7 @@ from typing import Any
 from codeagent.config_secrets import resolve_env_value
 from codeagent.providers.anthropic_mapping import map_stream, to_anthropic_request
 from codeagent.providers.base import Message, ModelEvent, ModelRequest
-from codeagent.providers.quota_errors import ProviderError
+from codeagent.providers.quota_errors import ProviderError, RateLimitError
 
 _API_KEY_ENV = "ANTHROPIC_API_KEY"
 _WORKSPACE_ENV = "ANTHROPIC_WORKSPACE_ID"
@@ -64,8 +64,16 @@ class AnthropicProvider:
     def stream(self, req: ModelRequest) -> Iterator[ModelEvent]:
         client = self._client()
         body = to_anthropic_request(req, thinking=self._thinking)
-        raw = client.messages.create(**body, stream=True)
-        yield from map_stream(event.model_dump() for event in raw)
+        try:
+            raw = client.messages.create(**body, stream=True)
+            yield from map_stream(event.model_dump() for event in raw)
+        except Exception as exc:
+            # The SDK is imported lazily, so its exception classes are matched by module.
+            if type(exc).__module__.split(".")[0] != "anthropic":
+                raise
+            if type(exc).__name__ == "RateLimitError":
+                raise RateLimitError(str(exc), retry_after_s=1.0) from exc
+            raise ProviderError(f"{type(exc).__name__}: {exc}") from exc
 
     def count_tokens(self, messages: list[Message]) -> int:
         """Rough estimate: about four characters per token."""
