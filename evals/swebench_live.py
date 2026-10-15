@@ -22,8 +22,11 @@ from pathlib import Path
 from codeagent.config import LimitSettings, PermissionSettings, RequestSettings, Settings
 from codeagent.context.manager import ContextManager
 from codeagent.loop.policy import PolicyGate
+from codeagent.permissions.approvals import ApprovalChoice
 from codeagent.permissions.run_context import PermissionRun
+from codeagent.permissions.types import Allow, Ask, Decision, Deny, RiskLevel
 from codeagent.providers.anthropic import AnthropicProvider
+from codeagent.providers.base import ToolCall
 from codeagent.runtime.bootstrap import build_system_prompt
 from codeagent.state.session import begin_persisted_run, run_with_persistence
 from codeagent.state.store import StateStore
@@ -63,6 +66,27 @@ def goal_text(inst: SweInstance) -> str:
         "Do not edit or add tests; they are run separately after you finish. "
         "You can run `python -m pytest <path>` to check your work."
     )
+
+
+_RUNNABLE = frozenset({"python", "pytest"})
+
+
+@dataclass
+class EvalApprover:
+    """Answers approval asks unattended: python and pytest commands only, everything else denied.
+
+    run_command defaults to "ask", so extra_allow alone does not let the agent run tests.
+    Session scope lets the agent rerun the same command.
+    """
+
+    choice: ApprovalChoice = "session"
+
+    def resolve(self, call: ToolCall, ask: Ask) -> Decision:
+        argv = call.args.get("argv")
+        if call.name == "run_command" and isinstance(argv, list) and argv:
+            if Path(str(argv[0])).name in _RUNNABLE:
+                return Allow(risk_level=ask.risk_level or RiskLevel.EXTERNAL_SIDE_EFFECT)
+        return Deny(f"not allowed in eval runs: {ask.reason}", risk_level=ask.risk_level)
 
 
 def eval_settings(max_iterations: int) -> Settings:
@@ -148,8 +172,9 @@ def run_task(
         )
         registry = _registry(workspace)
         policy = PolicyGate(
-            run=PermissionRun(workspace=workspace, settings=settings, interactive=False),
+            run=PermissionRun(workspace=workspace, settings=settings, interactive=True),
             registry=registry,
+            approval_prompt=EvalApprover(),
         )
         result = run_with_persistence(
             goal,
