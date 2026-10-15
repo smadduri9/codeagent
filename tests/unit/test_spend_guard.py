@@ -81,3 +81,31 @@ def test_ledger_survives_restart(tmp_path: Path) -> None:
     first = SpendLedger(path, cap_usd=3.0)
     first.add(1.25)
     assert SpendLedger(path, cap_usd=3.0).spent_usd == pytest.approx(1.25)
+
+
+def test_sonnet_needs_explicit_allowance_and_uses_sonnet_prices(tmp_path: Path) -> None:
+    from evals.spend import SONNET, SONNET_PRICE
+
+    default = SpendGuardProvider(FakeProvider([_turn(1, 1)]), SpendLedger(tmp_path / "a.json", 3.0))
+    with pytest.raises(ProviderError, match="not allowed"):
+        list(default.stream(_req(model=SONNET)))
+
+    ledger = SpendLedger(tmp_path / "b.json", cap_usd=3.0)
+    allowed = SpendGuardProvider(
+        FakeProvider([_turn(1_000_000, 0)]),
+        ledger,
+        allowed_models=frozenset({SONNET}),
+    )
+    list(allowed.stream(_req(model=SONNET)))
+    assert ledger.spent_usd == pytest.approx(SONNET_PRICE.input)
+    assert SONNET_PRICE.input == pytest.approx(2.0) and SONNET_PRICE.output == pytest.approx(10.0)
+
+
+def test_opus_is_never_priced_or_allowed(tmp_path: Path) -> None:
+    guard = SpendGuardProvider(
+        FakeProvider([_turn(1, 1)]),
+        SpendLedger(tmp_path / "c.json", 3.0),
+        allowed_models=frozenset({"claude-opus-5-5"}),
+    )
+    with pytest.raises(ProviderError, match="no price"):
+        list(guard.stream(_req(model="claude-opus-5-5")))

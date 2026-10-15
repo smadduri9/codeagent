@@ -23,6 +23,10 @@ from codeagent.providers.quota_errors import ProviderError
 
 HAIKU = "claude-haiku-5-5"
 HAIKU_PRICE = Price(input=0.10, output=0.50, cache_read=0.01, cache_write=0.125)
+# Owner-approved for one comparison run only (2026-10-15); not a default.
+SONNET = "claude-sonnet-5-5"
+SONNET_PRICE = Price(input=2.0, output=10.0, cache_read=0.20, cache_write=2.50)
+PRICES = {HAIKU: HAIKU_PRICE, SONNET: SONNET_PRICE}
 MAX_PROMPT_TOKENS = 100_000
 ESTIMATE_MARGIN = 1.5
 
@@ -64,23 +68,34 @@ def _estimate_prompt_tokens(req: ModelRequest) -> int:
 class SpendGuardProvider:
     """Wraps a provider; refuses calls that could pass the cap; records billed cost."""
 
-    def __init__(self, inner: Provider, ledger: SpendLedger) -> None:
+    def __init__(
+        self,
+        inner: Provider,
+        ledger: SpendLedger,
+        *,
+        allowed_models: frozenset[str] = frozenset({HAIKU}),
+    ) -> None:
         self._inner = inner
         self.ledger = ledger
+        self.allowed_models = allowed_models
         self.calls = 0
 
     def count_tokens(self, messages: list[Message]) -> int:
         return self._inner.count_tokens(messages)
 
     def stream(self, req: ModelRequest) -> Iterator[ModelEvent]:
-        if req.model != HAIKU:
-            raise ProviderError(f"only Haiku ({HAIKU}) may be used for live runs, got {req.model}")
+        if req.model not in self.allowed_models:
+            raise ProviderError(
+                f"model {req.model} is not allowed for this run (default: Haiku only)",
+            )
+        price = PRICES.get(req.model)
+        if price is None:
+            raise ProviderError(f"no price configured for {req.model}; refused")
         prompt = _estimate_prompt_tokens(req)
         if prompt > MAX_PROMPT_TOKENS:
             raise ProviderError("prompt estimate exceeds 100K tokens; refused (higher price tier)")
         worst = (
-            prompt * ESTIMATE_MARGIN * HAIKU_PRICE.input
-            + req.max_output_tokens * HAIKU_PRICE.output
+            prompt * ESTIMATE_MARGIN * price.input + req.max_output_tokens * price.output
         ) / 1_000_000
         if worst > self.ledger.remaining_usd:
             raise ProviderError(
@@ -90,5 +105,5 @@ class SpendGuardProvider:
         self.calls += 1
         for event in self._inner.stream(req):
             if isinstance(event, UsageEvent):
-                self.ledger.add(usage_cost(event.usage))
+                self.ledger.add(usage_cost(event.usage, price))
             yield event

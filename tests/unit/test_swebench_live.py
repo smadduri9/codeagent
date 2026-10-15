@@ -89,3 +89,12 @@ def test_compaction_threshold_is_configurable() -> None:
         eval_settings(max_iterations=5, max_request_tokens=8_000).request.max_request_tokens
         == 8_000
     )
+
+
+def test_thinking_off_setting_per_model() -> None:
+    from evals.spend import HAIKU, SONNET
+    from evals.swebench_live import thinking_off
+
+    assert thinking_off(HAIKU) == {"type": "disabled"}
+    # Sonnet 5.5 rejects "disabled"; "between_tools" turns thinking off there.
+    assert thinking_off(SONNET) == {"type": "between_tools"}
