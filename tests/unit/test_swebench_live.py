@@ -81,3 +81,11 @@ def test_eval_approver_allows_only_python_and_pytest_commands() -> None:
     assert isinstance(approver.resolve(curl, ask), Deny)
     assert isinstance(approver.resolve(write, ask), Deny)
     assert approver.choice == "session"
+
+
+def test_compaction_threshold_is_configurable() -> None:
+    assert eval_settings(max_iterations=5).request.max_request_tokens == 30_000
+    assert (
+        eval_settings(max_iterations=5, max_request_tokens=8_000).request.max_request_tokens
+        == 8_000
+    )

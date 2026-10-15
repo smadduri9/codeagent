@@ -2,7 +2,7 @@
 
 Usage:
   python -m evals.swebench_live --out .codeagent/swebench/runs/<name> --cap 3.0 [--ids a,b]
-      [--no-compaction] [--max-iterations 20]
+      [--no-compaction] [--max-iterations 20] [--max-request-tokens 30000]
 
 The agent never sees the test patch. After the run, any edits it made to the
 patched test files are reverted, the test patch is applied, and the failing tests
@@ -55,6 +55,8 @@ class TaskResult:
     diff_lines: int
     test_exit: int | None
     compaction: bool
+    compactions: int = 0
+    max_request_tokens: int = 30_000
     error: str | None = None
 
 
@@ -89,10 +91,12 @@ class EvalApprover:
         return Deny(f"not allowed in eval runs: {ask.reason}", risk_level=ask.risk_level)
 
 
-def eval_settings(max_iterations: int) -> Settings:
+def eval_settings(max_iterations: int, max_request_tokens: int = 30_000) -> Settings:
     return Settings(
         permissions=PermissionSettings(extra_allow=["python", "pytest"]),
-        request=RequestSettings(max_request_tokens=30_000, max_output_tokens=MAX_OUTPUT_TOKENS),
+        request=RequestSettings(
+            max_request_tokens=max_request_tokens, max_output_tokens=MAX_OUTPUT_TOKENS
+        ),
         limits=LimitSettings(
             max_iterations=max_iterations,
             max_tool_calls=60,
@@ -142,6 +146,7 @@ def run_task(
     ledger: SpendLedger,
     max_iterations: int,
     compaction: bool,
+    max_request_tokens: int = 30_000,
 ) -> TaskResult:
     clone = SWE / "repos" / inst.repo.replace("/", "__")
     workspace = SWE / "work" / inst.instance_id
@@ -152,7 +157,7 @@ def run_task(
     _git(["worktree", "add", "--detach", str(workspace), inst.base_commit], clone)
     python = build_env(inst, workspace, SWE / "envs" / inst.instance_id)
 
-    settings = eval_settings(max_iterations)
+    settings = eval_settings(max_iterations, max_request_tokens)
     guard = SpendGuardProvider(
         AnthropicProvider(thinking={"type": "disabled"}, start_dir=ROOT),
         ledger,
@@ -191,9 +196,10 @@ def run_task(
         steps = store.list_steps(ctx.run_id)
         tokens_in = sum(int(s["tokens_in"] or 0) for s in steps)
         tokens_out = sum(int(s["tokens_out"] or 0) for s in steps)
+        compactions = sum(1 for e in store.list_events(ctx.run_id) if e.name == "context.compacted")
     except Exception as exc:  # noqa: BLE001 - one task's failure must not stop the batch
         error = f"{type(exc).__name__}: {exc}"[:500]
-        tokens_in = tokens_out = 0
+        tokens_in = tokens_out = compactions = 0
     finally:
         for key, value in saved_env.items():
             if value is None:
@@ -225,6 +231,8 @@ def run_task(
         diff_lines=sum(1 for line in diff.splitlines() if line[:1] in "+-"),
         test_exit=test_exit,
         compaction=compaction,
+        compactions=compactions,
+        max_request_tokens=max_request_tokens,
         error=error,
     )
 
@@ -242,6 +250,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--slice", type=Path, default=ROOT / "evals" / "slices" / "swe30.txt")
     parser.add_argument("--max-iterations", type=int, default=20)
     parser.add_argument("--no-compaction", action="store_true")
+    parser.add_argument(
+        "--max-request-tokens",
+        type=int,
+        default=30_000,
+        help="context size that triggers compaction",
+    )
     args = parser.parse_args(argv)
 
     ids = [i for i in args.ids.split(",") if i] or _slice_ids(args.slice)
@@ -262,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
             ledger=ledger,
             max_iterations=args.max_iterations,
             compaction=not args.no_compaction,
+            max_request_tokens=args.max_request_tokens,
         )
         with results_path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(asdict(result)) + "\n")
