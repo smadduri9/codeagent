@@ -19,8 +19,6 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from evals.swebench_env import build_env, pytest_args
-
 from codeagent.config import LimitSettings, PermissionSettings, RequestSettings, Settings
 from codeagent.context.manager import ContextManager
 from codeagent.loop.policy import PolicyGate
@@ -32,6 +30,7 @@ from codeagent.state.store import StateStore
 from codeagent.tools.registry import ToolRegistry
 from evals.spend import HAIKU, SpendGuardProvider, SpendLedger
 from evals.swebench import SweInstance, load_instances
+from evals.swebench_env import build_env, pytest_args
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / ".codeagent" / "swe_bench_lite_test.jsonl"
