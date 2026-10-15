@@ -116,15 +116,16 @@ Shell strings cannot be proven safe by parsing; `run_command` uses argument arra
 
 Evaluation ([DESIGN.md](DESIGN.md) section 11):
 
-**SWE-bench Lite, 30-task subset, Claude Haiku 5.5** ([full report](evals/baselines/2026-10-15-swe30-haiku.md)). The tasks are 10 easy, 10 medium and 10 hard, each checked to fail before and pass after the reference fix. Grading runs the hidden failing tests after the agent finishes.
+**SWE-bench Lite, 30-task subset, Claude Haiku 5.5 and Sonnet 5.5** ([full report](evals/baselines/2026-10-15-swe30-haiku.md)). The tasks are 10 easy, 10 medium and 10 hard, each checked to fail before and pass after the reference fix. Grading runs the hidden failing tests after the agent finishes.
 
 | Run | Solved | 95% CI | Cost | Cost per solved |
 |------|--------|--------|------|-----------------|
-| Baseline, run 1 | 12/30 | 25–58% | $0.23 | $0.019 |
-| Baseline, run 2 (identical repeat) | 12/30 | 25–58% | $0.27 | $0.022 |
-| Compaction forced at 8K tokens | 13/30 | 27–61% | $0.25 | $0.019 |
+| Haiku, run 1 | 12/30 | 25–58% | $0.23 | $0.019 |
+| Haiku, run 2 (identical repeat) | 12/30 | 25–58% | $0.27 | $0.022 |
+| Haiku, compaction forced at 8K tokens | 13/30 | 27–61% | $0.25 | $0.019 |
+| Sonnet 5.5 | 17/30 | 39–73% | $4.11 | $0.242 |
 
-Identical runs flipped 6 of 30 task outcomes, and every paired difference above has McNemar p = 1.0. Treat any harness change smaller than that noise as unmeasured. These runs also exposed three bugs, now fixed and listed in the report. Local environments are used, not the official SWE-bench images, so the numbers are not comparable to leaderboard results.
+Identical Haiku runs flipped 6 of 30 task outcomes. Sonnet beat every Haiku run, but not significantly at n = 30 (McNemar p = 0.13–0.34), at 12 times the cost per solved task. Treat any difference smaller than the run-to-run noise as unmeasured. These runs also exposed four bugs, now fixed and listed in the report. Local environments are used, not the official SWE-bench images, so the numbers are not comparable to leaderboard results.
 
 | Other tier | Result | Notes |
 |------|--------|--------|
