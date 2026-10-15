@@ -151,3 +151,40 @@ def test_workspace_id_is_sent_as_header(tmp_path: Path, monkeypatch: pytest.Monk
     )
     list(provider.stream(req))
     assert seen["default_headers"] == {"anthropic-workspace-id": "wrkspc_test"}
+
+
+def _sdk_error(name: str) -> type[Exception]:
+    """An exception class that looks like one from the anthropic SDK."""
+    return type(name, (Exception,), {"__module__": "anthropic._exceptions"})
+
+
+class _FailingMessages:
+    def __init__(self, exc: Exception) -> None:
+        self._exc = exc
+
+    def create(self, **_kwargs: Any) -> list[_Event]:
+        raise self._exc
+
+
+def _failing_client(exc: Exception) -> Any:
+    return types.SimpleNamespace(messages=_FailingMessages(exc))
+
+
+def test_sdk_errors_become_provider_errors() -> None:
+    from codeagent.providers.quota_errors import RateLimitError
+
+    req = ModelRequest(
+        system="s",
+        messages=[Message(role=MessageRole.USER, content="hi")],
+        tools=[],
+        model="m",
+        max_output_tokens=8,
+    )
+    bad = _sdk_error("BadRequestError")("400 orphaned tool_result")
+    with pytest.raises(ProviderError, match="400"):
+        list(AnthropicProvider(client_factory=lambda: _failing_client(bad)).stream(req))
+    limited = _sdk_error("RateLimitError")("429")
+    with pytest.raises(RateLimitError):
+        list(AnthropicProvider(client_factory=lambda: _failing_client(limited)).stream(req))
+    with pytest.raises(KeyError):  # non-SDK errors are not swallowed
+        list(AnthropicProvider(client_factory=lambda: _failing_client(KeyError("x"))).stream(req))
