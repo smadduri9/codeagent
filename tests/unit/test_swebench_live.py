@@ -63,3 +63,21 @@ def test_eval_settings_allow_only_python_and_pytest() -> None:
     settings = eval_settings(max_iterations=7)
     assert settings.permissions.extra_allow == ["python", "pytest"]
     assert settings.limits.max_iterations == 7
+
+
+def test_eval_approver_allows_only_python_and_pytest_commands() -> None:
+    from codeagent.permissions.types import Allow, Ask, Deny
+    from codeagent.providers.base import ToolCall
+    from evals.swebench_live import EvalApprover
+
+    approver = EvalApprover()
+    ask = Ask("needs approval")
+    py = ToolCall(id="1", name="run_command", args={"argv": ["python", "-m", "pytest", "t.py"]})
+    pt = ToolCall(id="2", name="run_command", args={"argv": ["/env/bin/pytest", "-q"]})
+    curl = ToolCall(id="3", name="run_command", args={"argv": ["curl", "http://x"]})
+    write = ToolCall(id="4", name="write_file", args={"path": "a.py", "content": "x"})
+    assert isinstance(approver.resolve(py, ask), Allow)
+    assert isinstance(approver.resolve(pt, ask), Allow)
+    assert isinstance(approver.resolve(curl, ask), Deny)
+    assert isinstance(approver.resolve(write, ask), Deny)
+    assert approver.choice == "session"
