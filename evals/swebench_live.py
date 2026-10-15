@@ -31,7 +31,7 @@ from codeagent.runtime.bootstrap import build_system_prompt
 from codeagent.state.session import begin_persisted_run, run_with_persistence
 from codeagent.state.store import StateStore
 from codeagent.tools.registry import ToolRegistry
-from evals.spend import HAIKU, SpendGuardProvider, SpendLedger
+from evals.spend import HAIKU, SONNET, SpendGuardProvider, SpendLedger
 from evals.swebench import SweInstance, load_instances
 from evals.swebench_env import build_env, pytest_args
 
@@ -58,6 +58,17 @@ class TaskResult:
     compactions: int = 0
     max_request_tokens: int = 30_000
     error: str | None = None
+
+
+_THINKING_OFF: dict[str, dict[str, str]] = {
+    HAIKU: {"type": "disabled"},
+    # Sonnet 5.5 rejects "disabled" with a 400; "between_tools" turns thinking off.
+    SONNET: {"type": "between_tools"},
+}
+
+
+def thinking_off(model: str) -> dict[str, str]:
+    return _THINKING_OFF[model]
 
 
 def goal_text(inst: SweInstance) -> str:
@@ -147,6 +158,7 @@ def run_task(
     max_iterations: int,
     compaction: bool,
     max_request_tokens: int = 30_000,
+    model: str = HAIKU,
 ) -> TaskResult:
     clone = SWE / "repos" / inst.repo.replace("/", "__")
     workspace = SWE / "work" / inst.instance_id
@@ -159,8 +171,9 @@ def run_task(
 
     settings = eval_settings(max_iterations, max_request_tokens)
     guard = SpendGuardProvider(
-        AnthropicProvider(thinking={"type": "disabled"}, start_dir=ROOT),
+        AnthropicProvider(thinking=thinking_off(model), start_dir=ROOT),
         ledger,
+        allowed_models=frozenset({model}),
     )
     store = StateStore(task_out / "state.db")
     before = ledger.spent_usd
@@ -173,7 +186,7 @@ def run_task(
     try:
         goal = goal_text(inst)
         ctx = begin_persisted_run(
-            store, repo_root=workspace, goal=goal, model=HAIKU, settings=settings
+            store, repo_root=workspace, goal=goal, model=model, settings=settings
         )
         registry = _registry(workspace)
         policy = PolicyGate(
@@ -251,6 +264,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-iterations", type=int, default=20)
     parser.add_argument("--no-compaction", action="store_true")
     parser.add_argument(
+        "--model",
+        choices=sorted(_THINKING_OFF),
+        default=HAIKU,
+        help="Haiku by default; Sonnet only with the owner's explicit approval",
+    )
+    parser.add_argument(
         "--max-request-tokens",
         type=int,
         default=30_000,
@@ -276,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
             ledger=ledger,
             max_iterations=args.max_iterations,
             compaction=not args.no_compaction,
+            model=args.model,
             max_request_tokens=args.max_request_tokens,
         )
         with results_path.open("a", encoding="utf-8") as fh:
