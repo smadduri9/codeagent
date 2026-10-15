@@ -149,40 +149,36 @@ flowchart TB
       </ul>
       <p>
         Python 3.12, strict mypy, Ruff, pytest on Ubuntu and macOS.
-        442 offline pytest cases in CI (live excluded), including a dedicated security suite.
+        589 offline pytest cases in CI (live excluded), including a dedicated security suite.
       </p>
     </section>
 
     <section id="evaluation">
       <h2>Evaluation</h2>
       <p class="section-lead">
-        Scripted replay validates the full loop in CI without API tokens; live slices are optional and quota-aware.
+        Live results on a 30-task SWE-bench Lite subset, graded by hidden failing tests. Scripted replay guards the loop in CI.
       </p>
       <div class="eval-highlights">
         <div class="eval-stat eval-stat-primary">
+          <span class="eval-stat-value">12–13 / 30</span>
+          <span class="eval-stat-label">Claude Haiku 5.5, three runs</span>
+          <p class="eval-stat-detail">About $0.02 per solved task. Identical runs flipped 6 of 30 outcomes.</p>
+        </div>
+        <div class="eval-stat">
+          <span class="eval-stat-value">17 / 30</span>
+          <span class="eval-stat-label">Claude Sonnet 5.5, one run</span>
+          <p class="eval-stat-detail">Not significantly above Haiku at n = 30 (McNemar p = 0.13–0.34), at 12 times the cost per solve.</p>
+        </div>
+        <div class="eval-stat">
           <span class="eval-stat-value">42 / 42</span>
           <span class="eval-stat-label">Scripted replay (CI)</span>
-          <p class="eval-stat-detail">40 tasks plus harness smoke through the real loop, tools, and permissions via FakeProvider.</p>
-        </div>
-        <div class="eval-stat">
-          <span class="eval-stat-value">442</span>
-          <span class="eval-stat-label">Offline pytest cases</span>
-          <p class="eval-stat-detail">Including security tests; live provider tests are optional and excluded from the default check script.</p>
-        </div>
-        <div class="eval-stat">
-          <span class="eval-stat-value">40 tasks</span>
-          <span class="eval-stat-label">Fixture suite</span>
-          <p class="eval-stat-detail">Small repositories with check commands and reference transcripts for deterministic replay.</p>
+          <p class="eval-stat-detail">A plumbing regression gate through the real loop, tools, and permissions via FakeProvider. Not a capability measure.</p>
         </div>
       </div>
       <p>
-        For model comparison under real API limits, run
-        <code>codeagent eval --live --slice core12 --resume</code>
-        locally. Daily Groq quotas cap throughput; runs resume across days. Treat live output as exploratory, not a published scorecard.
-      </p>
-      <p>
-        Baselines and reports:
-        <a href="https://github.com/smadduri9/codeagent/tree/main/evals/baselines">evals/baselines/</a>.
+        Local environments, not the official SWE-bench images, so the numbers are not comparable to leaderboard results.
+        Full report:
+        <a href="https://github.com/smadduri9/codeagent/blob/main/evals/baselines/2026-10-15-swe30-haiku.md">SWE-bench subset results</a>.
       </p>
     </section>
 
