@@ -71,9 +71,16 @@ def _convert_messages(messages: list[Message]) -> list[dict[str, Any]]:
     return out
 
 
-def to_anthropic_request(req: ModelRequest) -> dict[str, Any]:
-    """Build the keyword arguments for ``client.messages.create``."""
-    return {
+def to_anthropic_request(
+    req: ModelRequest,
+    *,
+    thinking: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the keyword arguments for ``client.messages.create``.
+
+    Sampling parameters are never sent: current models reject non-default values.
+    """
+    body: dict[str, Any] = {
         "model": req.model,
         "max_tokens": req.max_output_tokens,
         "system": [
@@ -92,8 +99,10 @@ def to_anthropic_request(req: ModelRequest) -> dict[str, Any]:
             }
             for spec in req.tools
         ],
-        "temperature": req.temperature,
     }
+    if thinking is not None:
+        body["thinking"] = thinking
+    return body
 
 
 _STOP_REASONS = {

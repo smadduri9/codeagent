@@ -89,3 +89,19 @@ def test_tools_map_to_input_schema() -> None:
             "input_schema": {"type": "object", "properties": {}},
         },
     ]
+
+
+def test_temperature_is_never_sent() -> None:
+    # Current Claude models reject non-default sampling parameters with a 400.
+    body = to_anthropic_request(_request([Message(role=MessageRole.USER, content="hi")]))
+    assert "temperature" not in body
+
+
+def test_thinking_setting_is_passed_through_only_when_given() -> None:
+    plain = to_anthropic_request(_request([Message(role=MessageRole.USER, content="hi")]))
+    assert "thinking" not in plain
+    off = to_anthropic_request(
+        _request([Message(role=MessageRole.USER, content="hi")]),
+        thinking={"type": "disabled"},
+    )
+    assert off["thinking"] == {"type": "disabled"}

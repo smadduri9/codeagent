@@ -13,6 +13,7 @@ from codeagent.providers.base import Message, ModelEvent, ModelRequest
 from codeagent.providers.quota_errors import ProviderError
 
 _API_KEY_ENV = "ANTHROPIC_API_KEY"
+_WORKSPACE_ENV = "ANTHROPIC_WORKSPACE_ID"
 _MISSING_SDK = "the Anthropic provider needs the optional extra: pip install 'codeagent[anthropic]'"
 
 
@@ -25,10 +26,12 @@ class AnthropicProvider:
         client_factory: Callable[[], Any] | None = None,
         start_dir: Path | None = None,
         user_dir: Path | None = None,
+        thinking: dict[str, Any] | None = None,
     ) -> None:
         self._client_factory = client_factory
         self._start_dir = start_dir
         self._user_dir = user_dir
+        self._thinking = thinking
 
     def _client(self) -> Any:
         if self._client_factory is not None:
@@ -45,11 +48,22 @@ class AnthropicProvider:
         )
         if not key:
             raise ProviderError(f"{_API_KEY_ENV} is not set")
+        workspace = resolve_env_value(
+            _WORKSPACE_ENV,
+            self._start_dir or Path.cwd(),
+            user_dir=self._user_dir,
+        )
+        if workspace:
+            # Keys not scoped to a workspace must name one on every request.
+            return sdk.Anthropic(
+                api_key=key,
+                default_headers={"anthropic-workspace-id": workspace},
+            )
         return sdk.Anthropic(api_key=key)
 
     def stream(self, req: ModelRequest) -> Iterator[ModelEvent]:
         client = self._client()
-        body = to_anthropic_request(req)
+        body = to_anthropic_request(req, thinking=self._thinking)
         raw = client.messages.create(**body, stream=True)
         yield from map_stream(event.model_dump() for event in raw)
 

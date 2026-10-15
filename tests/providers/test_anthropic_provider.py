@@ -70,9 +70,12 @@ def test_stream_sends_mapped_request_with_stream_flag() -> None:
     assert call["stream"] is True
 
 
-def test_missing_sdk_or_key_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_key_is_a_clear_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Look only in an empty temporary repo, never the developer's real .env files.
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    provider = AnthropicProvider()
+    monkeypatch.setitem(sys.modules, "anthropic", types.SimpleNamespace(Anthropic=object))
+    provider = AnthropicProvider(start_dir=tmp_path, user_dir=tmp_path / "no-home")
     req = ModelRequest(
         system="s",
         messages=[Message(role=MessageRole.USER, content="hi")],
@@ -106,3 +109,45 @@ def test_key_is_read_from_repo_dotenv(tmp_path: Path, monkeypatch: pytest.Monkey
     )
     list(provider.stream(req))
     assert seen["key"] == "test-key-not-real"
+
+
+def test_provider_forwards_thinking_setting() -> None:
+    client = _Client(_TEXT_EVENTS)
+    provider = AnthropicProvider(client_factory=lambda: client, thinking={"type": "disabled"})
+    req = ModelRequest(
+        system="s",
+        messages=[Message(role=MessageRole.USER, content="hi")],
+        tools=[],
+        model="m",
+        max_output_tokens=8,
+    )
+    list(provider.stream(req))
+    assert client.messages.calls[0]["thinking"] == {"type": "disabled"}
+
+
+def test_workspace_id_is_sent_as_header(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / ".env").write_text(
+        "ANTHROPIC_API_KEY=test-key-not-real\nANTHROPIC_WORKSPACE_ID=wrkspc_test\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_WORKSPACE_ID", raising=False)
+    seen: dict[str, Any] = {}
+
+    class _Anthropic:
+        def __init__(self, **kwargs: Any) -> None:
+            seen.update(kwargs)
+            self.messages = _Messages(_TEXT_EVENTS)
+
+    monkeypatch.setitem(sys.modules, "anthropic", types.SimpleNamespace(Anthropic=_Anthropic))
+    provider = AnthropicProvider(start_dir=tmp_path, user_dir=tmp_path / "no-home")
+    req = ModelRequest(
+        system="s",
+        messages=[Message(role=MessageRole.USER, content="hi")],
+        tools=[],
+        model="m",
+        max_output_tokens=8,
+    )
+    list(provider.stream(req))
+    assert seen["default_headers"] == {"anthropic-workspace-id": "wrkspc_test"}
