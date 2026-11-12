@@ -111,7 +111,11 @@ def handle_git_log(ctx: GitToolContext, args: GitLogArgs) -> ToolResult:
 
 def handle_git_show(ctx: GitToolContext, args: GitShowArgs) -> ToolResult:
     try:
-        result = run_git(ctx.repo, ["show", "--stat", "--patch", args.ref], check=False)
+        result = run_git(
+            ctx.repo,
+            ["show", "--stat", "--patch", "--end-of-options", args.ref],
+            check=False,
+        )
     except OSError as exc:
         return ToolResult(ok=False, summary="git_show failed", content=str(exc), truncated=False)
     if result.returncode != 0:
