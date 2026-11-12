@@ -56,12 +56,14 @@ def build_tool_registry(
             warn=warn,
         ),
     )
-    registry.register_git_tools(repo_root, settings.tools)
+    # Every tool acts on the workspace: in worktree mode that is where the agent's
+    # edits are, and the user's checkout (repo_root) does not contain them.
+    registry.register_git_tools(workspace, settings.tools)
     if store is not None and run_id is not None:
         registry.register_workflow_tools(
             store=store,
             run_id=run_id,
-            repo_root=repo_root,
+            repo_root=workspace,
             settings=settings,
             edited_py_files=[],
         )

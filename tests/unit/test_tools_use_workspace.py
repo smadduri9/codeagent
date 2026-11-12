@@ -6,16 +6,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from codeagent.config import IsolationSettings, Settings, VerifySettings
 from codeagent.isolation.session import begin_isolation
 from codeagent.providers.base import ToolCall
 from codeagent.runtime.bootstrap import build_tool_registry
 from codeagent.state.store import StateStore
 from codeagent.tools.registry import ToolRegistry
-
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-08")
 
 # Passes only when run from a directory that contains marker.txt.
 _NEEDS_MARKER = [
@@ -61,7 +57,6 @@ def _run(registry: ToolRegistry, name: str, args: dict[str, object]) -> str:
     return f"{result.ok}|{result.content}"
 
 
-@_XFAIL
 def test_git_tools_see_worktree_changes(tmp_path: Path) -> None:
     registry, _repo, worktree = _registry(tmp_path)
     (worktree / "README.md").write_text("edited by the agent\n", encoding="utf-8")
@@ -70,7 +65,6 @@ def test_git_tools_see_worktree_changes(tmp_path: Path) -> None:
     assert "edited by the agent" in _run(registry, "git_diff", {})
 
 
-@_XFAIL
 def test_run_tests_runs_in_the_worktree(tmp_path: Path) -> None:
     registry, _repo, worktree = _registry(tmp_path)
     (worktree / "marker.txt").write_text("here\n", encoding="utf-8")
@@ -79,7 +73,6 @@ def test_run_tests_runs_in_the_worktree(tmp_path: Path) -> None:
     assert "test:pass" in outcome
 
 
-@_XFAIL
 def test_run_tests_does_not_pass_on_the_untouched_checkout(tmp_path: Path) -> None:
     registry, repo, _worktree = _registry(tmp_path)
     (repo / "marker.txt").write_text("only in the user's checkout\n", encoding="utf-8")
