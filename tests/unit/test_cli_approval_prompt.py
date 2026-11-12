@@ -12,8 +12,6 @@ from codeagent.permissions.types import Allow, Ask, Deny, RiskLevel
 from codeagent.providers.base import ToolCall
 from codeagent.runtime.approvals import CliApprovalPrompt
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-02")
-
 
 def _resolve(
     monkeypatch: pytest.MonkeyPatch, call: ToolCall, answer: str = "n"
@@ -26,7 +24,6 @@ def _resolve(
     return buffer.getvalue(), decision
 
 
-@_XFAIL
 @pytest.mark.parametrize(
     ("name", "args", "expected"),
     [
@@ -43,7 +40,6 @@ def test_prompt_shows_arguments(
     assert name in output
 
 
-@_XFAIL
 def test_prompt_truncates_long_values(monkeypatch: pytest.MonkeyPatch) -> None:
     call = ToolCall(id="1", name="bash", args={"command": "echo " + "x" * 5000})
     output, _ = _resolve(monkeypatch, call)
@@ -52,7 +48,6 @@ def test_prompt_truncates_long_values(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(output) < 2000
 
 
-@_XFAIL
 def test_prompt_escapes_markup_and_control_characters(monkeypatch: pytest.MonkeyPatch) -> None:
     call = ToolCall(id="1", name="bash", args={"command": "echo [red]hi[/red] \x1b[2J"})
     output, _ = _resolve(monkeypatch, call)
