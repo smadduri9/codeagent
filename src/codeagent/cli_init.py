@@ -1,6 +1,8 @@
 import json
+import tomllib
 from pathlib import Path
 
+import typer
 from rich.console import Console
 
 from codeagent.config import find_git_root
@@ -11,12 +13,20 @@ console = Console()
 
 def init_command() -> None:
     root = find_git_root(Path.cwd())
-    detected = detect_commands(root)
     path = root / ".codeagent" / "config.toml"
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    try:
+        data = tomllib.loads(existing)
+    except tomllib.TOMLDecodeError as exc:
+        console.print(f"[red]Cannot parse {path}: {exc}. Fix or remove it, then rerun.[/red]")
+        raise typer.Exit(code=1) from exc
+    if "verify" in data:
+        console.print(f"{path} already has a [verify] table; left unchanged")
+        return
+    detected = detect_commands(root)
     lines: list[str] = []
-    if "[model]" not in existing and "main" not in existing:
+    if "model" not in data:
         lines.extend(
             [
                 "[model]",

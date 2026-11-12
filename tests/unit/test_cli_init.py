@@ -11,8 +11,6 @@ from typer.testing import CliRunner
 
 from codeagent.cli import app
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-03")
-
 
 def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo = tmp_path / "repo"
@@ -34,7 +32,6 @@ def test_init_writes_parseable_config(tmp_path: Path, monkeypatch: pytest.Monkey
     assert "verify" in tomllib.loads(_config(repo).read_text(encoding="utf-8"))
 
 
-@_XFAIL
 def test_init_twice_keeps_config_parseable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _repo(tmp_path, monkeypatch)
     assert CliRunner().invoke(app, ["init"]).exit_code == 0
@@ -45,7 +42,6 @@ def test_init_twice_keeps_config_parseable(tmp_path: Path, monkeypatch: pytest.M
     tomllib.loads(first)
 
 
-@_XFAIL
 def test_init_keeps_an_existing_verify_table(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -57,7 +53,6 @@ def test_init_keeps_an_existing_verify_table(
     assert _config(repo).read_text(encoding="utf-8") == original
 
 
-@_XFAIL
 def test_init_refuses_to_touch_a_broken_config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
