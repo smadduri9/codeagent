@@ -91,17 +91,27 @@ class CheckpointStore:
             self.on_event("checkpoint.created", {"label": label, "git_ref": ref})
         return record
 
-    def rollback_to(self, label: str | None) -> str:
-        target_ref: str
+    def record(self, label: str, git_ref: str) -> CheckpointRecord:
+        """Record an existing commit as a checkpoint without touching the work tree."""
+        created = datetime.now(UTC).isoformat()
+        record = CheckpointRecord(label=label, git_ref=git_ref, created_at=created)
+        self.records.append(record)
+        self.save()
+        return record
+
+    def resolve(self, label: str | None) -> str:
+        """Return the commit for ``label``; the earliest checkpoint when it is None."""
         if label is None:
             if not self.records:
                 raise RollbackError("no checkpoints recorded for this run")
-            target_ref = self.records[0].git_ref
-        else:
-            matches = [r for r in self.records if r.label == label]
-            if not matches:
-                raise RollbackError(f"unknown checkpoint label: {label}")
-            target_ref = matches[-1].git_ref
+            return self.records[0].git_ref
+        matches = [r for r in self.records if r.label == label]
+        if not matches:
+            raise RollbackError(f"unknown checkpoint label: {label}")
+        return matches[-1].git_ref
+
+    def rollback_to(self, label: str | None) -> str:
+        target_ref = self.resolve(label)
         try:
             run_git(self.repo, ["reset", "--hard", target_ref], check=True)
         except GitCommandError as exc:
