@@ -64,7 +64,10 @@ def test_approval_cannot_be_reused(tmp_path: Path) -> None:
     store = ApprovalStore()
     prompt = ApprovalPrompt(choice="once")
     resolve_ask(call, ask, prompt=prompt, store=store, session_allowed_hashes=set())
-    again = resolve_ask(call, ask, prompt=prompt, store=store, session_allowed_hashes=set())
+    # The first approval is spent: the second call needs its own answer
+    # (decision 0016). Without a new approval it is denied.
+    refusing = ApprovalPrompt(choice="deny")
+    again = resolve_ask(call, ask, prompt=refusing, store=store, session_allowed_hashes=set())
     from codeagent.permissions import Deny
 
     assert isinstance(again, Deny)
