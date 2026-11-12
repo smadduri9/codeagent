@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterator
 from json import dumps, loads
 from typing import Any, Protocol
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from openai.types.chat import ChatCompletionChunk
 
 from codeagent.context.tokens import estimate_messages_tokens
@@ -26,7 +26,7 @@ from codeagent.providers.base import (
     Usage,
     UsageEvent,
 )
-from codeagent.providers.quota_errors import ContextOverflowError
+from codeagent.providers.quota_errors import ContextOverflowError, ProviderError
 
 
 class StreamClient(Protocol):
@@ -71,6 +71,9 @@ class OpenAICompatibleProvider:
             message = str(exc).lower()
             if "too large" in message or "context" in message and "length" in message:
                 raise ContextOverflowError(str(exc)) from exc
+            if isinstance(exc, OpenAIError):
+                # Keep the SDK text: ManagedProvider reads it for 429 handling.
+                raise ProviderError(str(exc)) from exc
             raise
 
     def _iter_chunks(self, req: ModelRequest) -> Iterator[ChatCompletionChunk]:

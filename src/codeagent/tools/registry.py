@@ -145,7 +145,10 @@ class ToolRegistry:
 
     def run_validated(self, call: ToolCall, args: BaseModel) -> ToolResult:
         handler = self._handlers[call.name]
-        return handler(args)
+        try:
+            return handler(args)
+        except Exception as exc:  # noqa: BLE001 - a tool failure is not a task failure
+            return self.tool_error(call, f"{type(exc).__name__}: {exc}")
 
     def run(self, call: ToolCall) -> ToolResult:
         validated = self.validate(call)

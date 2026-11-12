@@ -30,8 +30,6 @@ from codeagent.providers.quota_errors import ContextOverflowError, ProviderError
 from codeagent.tools.base import StrictArgs, ToolResult
 from codeagent.tools.registry import ToolRegistry
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-04")
-
 
 class _NoArgs(StrictArgs):
     pass
@@ -46,7 +44,6 @@ def _registry_with_raising_tool(exc: Exception) -> ToolRegistry:
     return registry
 
 
-@_XFAIL
 @pytest.mark.parametrize(
     "exc",
     [PermissionError("denied by os"), IsADirectoryError("is a directory"), ValueError("bad")],
@@ -59,7 +56,6 @@ def test_handler_exception_becomes_failed_result(exc: Exception) -> None:
     assert str(exc) in result.content
 
 
-@_XFAIL
 def test_read_file_on_non_utf8_text_fails_cleanly(tmp_path: Path) -> None:
     (tmp_path / "latin1.txt").write_bytes("caf\xe9 au lait\n".encode("latin-1"))
     registry = ToolRegistry()
@@ -69,7 +65,6 @@ def test_read_file_on_non_utf8_text_fails_cleanly(tmp_path: Path) -> None:
     assert "UnicodeDecodeError" in result.content
 
 
-@_XFAIL
 def test_loop_survives_a_raising_tool() -> None:
     turns: list[list[Any]] = [
         [
@@ -109,7 +104,6 @@ def _provider(exc: Exception) -> OpenAICompatibleProvider:
     )
 
 
-@_XFAIL
 def test_openai_sdk_error_becomes_provider_error() -> None:
     with pytest.raises(ProviderError, match="Connection error"):
         list(_provider(openai.OpenAIError("Connection error.")).stream(_request()))
