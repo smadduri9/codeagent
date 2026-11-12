@@ -15,6 +15,7 @@ from codeagent.isolation.lock import RunLockError
 from codeagent.isolation.session import (
     DirtyTreeChoice,
     IsolationError,
+    IsolationSession,
     begin_isolation,
     finish_isolation,
 )
@@ -54,6 +55,29 @@ def _resolve_provider(
         return FakeProvider(load_fake_script(fake_script)), model, True
     provider, model = build_managed_provider(settings, cwd, store=store)
     return provider, model, False
+
+
+def finish_and_report(isolation: IsolationSession) -> None:
+    """Finish isolation and tell the operator where the work is."""
+    diff = finish_isolation(isolation)
+    if diff.strip():
+        console.print("[bold]final diff[/bold]:")
+        console.print(diff, markup=False, highlight=False)
+    if isolation.saved_branch is not None:
+        branch = isolation.saved_branch
+        console.print(
+            f"work saved on branch {branch}; take it with: git merge {branch}",
+            markup=False,
+            highlight=False,
+            soft_wrap=True,
+        )
+    elif isolation.kept_worktree:
+        console.print(
+            f"could not commit the work; it is still in {isolation.worktree_path}",
+            markup=False,
+            highlight=False,
+            soft_wrap=True,
+        )
 
 
 def execute_agent_run(
@@ -184,25 +208,7 @@ def execute_agent_run(
             )
     finally:
         if isolation is not None:
-            diff = finish_isolation(isolation)
-            if diff.strip():
-                console.print("[bold]final diff[/bold]:")
-                console.print(diff, markup=False, highlight=False)
-            if isolation.saved_branch is not None:
-                branch = isolation.saved_branch
-                console.print(
-                    f"work saved on branch {branch}; take it with: git merge {branch}",
-                    markup=False,
-                    highlight=False,
-                    soft_wrap=True,
-                )
-            elif isolation.kept_worktree:
-                console.print(
-                    f"could not commit the work; it is still in {isolation.worktree_path}",
-                    markup=False,
-                    highlight=False,
-                    soft_wrap=True,
-                )
+            finish_and_report(isolation)
         if store is not None:
             store.close()
 

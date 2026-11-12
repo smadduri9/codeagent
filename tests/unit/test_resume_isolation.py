@@ -27,8 +27,6 @@ from codeagent.providers.base import (
 )
 from codeagent.state.store import StateStore, default_state_db_path
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-10")
-
 
 def _git(repo: Path, *args: str) -> str:
     done = subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, text=True)
@@ -47,7 +45,6 @@ def _repo(path: Path) -> Path:
     return path
 
 
-@_XFAIL
 def test_resume_isolation_recreates_the_worktree_from_the_saved_branch(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     first = begin_isolation(repo, "rs-1", IsolationSettings(mode="worktree"))
@@ -67,7 +64,6 @@ def test_resume_isolation_recreates_the_worktree_from_the_saved_branch(tmp_path:
     assert second.baseline_ref == first.baseline_ref
 
 
-@_XFAIL
 def test_resume_isolation_after_a_run_that_changed_nothing(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     finish_isolation(begin_isolation(repo, "rs-2", IsolationSettings(mode="worktree")))
@@ -78,7 +74,6 @@ def test_resume_isolation_after_a_run_that_changed_nothing(tmp_path: Path) -> No
     again.cleanup()
 
 
-@_XFAIL
 def test_resume_isolation_reuses_a_worktree_left_by_a_crash(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     crashed = begin_isolation(repo, "rs-3", IsolationSettings(mode="worktree"))
@@ -92,7 +87,6 @@ def test_resume_isolation_reuses_a_worktree_left_by_a_crash(tmp_path: Path) -> N
     again.cleanup()
 
 
-@_XFAIL
 def test_resume_isolation_returns_none_for_a_run_without_isolation(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     assert isolation_session.resume_isolation(repo, "never-isolated") is None
@@ -119,7 +113,6 @@ def _script(path: Path, filename: str) -> Path:
     return path
 
 
-@_XFAIL
 def test_cli_resume_writes_into_the_run_branch_not_the_checkout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
