@@ -4,14 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import pytest
-
 from codeagent.permissions import ApprovalStore, Ask, Deny, resolve_ask
 from codeagent.permissions.approvals import ApprovalChoice
 from codeagent.permissions.types import Allow, Decision, RiskLevel
 from codeagent.providers.base import ToolCall
-
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-05")
 
 
 @dataclass
@@ -38,7 +34,6 @@ def _resolve(prompt: _ScriptedPrompt, store: ApprovalStore, session: set[str]) -
     return resolve_ask(_CALL, _ASK, prompt=prompt, store=store, session_allowed_hashes=session)
 
 
-@_XFAIL
 def test_identical_call_after_once_approval_asks_again() -> None:
     prompt = _ScriptedPrompt(answers=["once", "once"])
     store, session = ApprovalStore(), set[str]()
@@ -47,7 +42,6 @@ def test_identical_call_after_once_approval_asks_again() -> None:
     assert len(prompt.asked) == 2
 
 
-@_XFAIL
 def test_used_approval_is_never_reused_without_a_new_answer() -> None:
     prompt = _ScriptedPrompt(answers=["once", "deny"])
     store, session = ApprovalStore(), set[str]()

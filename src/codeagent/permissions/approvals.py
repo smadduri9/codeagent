@@ -111,9 +111,8 @@ def resolve_ask(
     session_allowed_hashes: set[str],
 ) -> Decision:
     digest = tool_call_hash(call)
-    status = store.status(call)
-    if status is ApprovalStatus.USED:
-        return Deny("approval already used", risk_level=ask.risk_level)
+    # A used approval grants nothing: an identical later call falls through to a
+    # fresh prompt (decision 0016). It is never allowed without a new answer.
     if digest in session_allowed_hashes:
         return Allow(
             risk_level=ask.risk_level or RiskLevel.EXTERNAL_SIDE_EFFECT,

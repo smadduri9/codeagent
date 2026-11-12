@@ -25,14 +25,17 @@ def test_single_use_approval_rejects_replay() -> None:
         session_allowed_hashes=set(),
     )
     assert not isinstance(first, Deny)
+    # The used approval grants nothing: the second call needs its own answer
+    # (decision 0016), and a refusal is honoured.
     second = resolve_ask(
         call,
         ask,
-        prompt=prompt,
+        prompt=ApprovalPrompt(choice="deny"),
         store=store,
         session_allowed_hashes=set(),
     )
     assert isinstance(second, Deny)
+    assert not store.consume(call)
 
 
 def test_deny_message_reaches_caller() -> None:
