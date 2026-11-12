@@ -24,8 +24,6 @@ from codeagent.providers.base import (
     UsageEvent,
 )
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-07")
-
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, text=True)
@@ -47,7 +45,6 @@ def _branch_exists(repo: Path, branch: str) -> bool:
     return _git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
 
 
-@_XFAIL
 def test_finish_commits_work_and_keeps_the_branch(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     session = begin_isolation(repo, "keep-1", IsolationSettings(mode="worktree"))
@@ -70,7 +67,6 @@ def test_finish_commits_work_and_keeps_the_branch(tmp_path: Path) -> None:
     assert _git(repo, "status", "--porcelain").stdout == ""
 
 
-@_XFAIL
 def test_finish_without_changes_leaves_no_branch(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     session = begin_isolation(repo, "keep-2", IsolationSettings(mode="worktree"))
@@ -80,7 +76,6 @@ def test_finish_without_changes_leaves_no_branch(tmp_path: Path) -> None:
     assert session.saved_branch is None
 
 
-@_XFAIL
 def test_finish_keeps_the_worktree_when_the_commit_fails(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     session = begin_isolation(repo, "keep-3", IsolationSettings(mode="worktree"))
@@ -131,7 +126,6 @@ def _script(tmp_path: Path) -> Path:
     return path
 
 
-@_XFAIL
 def test_persisted_cli_run_keeps_the_written_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
