@@ -8,6 +8,11 @@ from enum import StrEnum
 
 from codeagent.providers.base import ToolCall
 
+REPEAT_WARNING = (
+    "Repeat guard: you made the identical tool call three times within six calls. "
+    "Change approach; the run stops if this happens again."
+)
+
 
 class GuardStopReason(StrEnum):
     MAX_ITERATIONS = "max_iterations"
@@ -51,10 +56,14 @@ class LoopGuards:
                 self.state.repeat_warned = True
                 return GuardResult(
                     stop=False,
-                    warning="repeated identical tool call detected",
+                    warning=REPEAT_WARNING,
                 )
             return GuardResult(stop=True, reason=GuardStopReason.REPEAT_TOOL_CALLS)
         return GuardResult(stop=False)
+
+    def on_workspace_changed(self) -> None:
+        """A successful edit changes what an identical call returns: restart the window."""
+        self.state.recent_calls.clear()
 
     def on_denial(self) -> GuardResult:
         self.state.denial_streak += 1

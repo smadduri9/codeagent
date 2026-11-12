@@ -132,12 +132,14 @@ def _note_completion_effects(
     call: ToolCall,
     result: ToolResult,
     changed_files: list[str],
+    guards: LoopGuards,
 ) -> None:
-    """Feed successful edits and test runs to the completion gate (both execution paths)."""
+    """Feed successful edits and test runs to the gate and guards (both execution paths)."""
     if not result.ok:
         return
     if call.name in _EDIT_TOOLS:
         gate.note_edit()
+        guards.on_workspace_changed()
         path_arg = call.args.get("path")
         if isinstance(path_arg, str):
             changed_files.append(path_arg)
@@ -439,6 +441,7 @@ def run_agent_loop(
             return _finish(RunPhase.COMPLETED, reason)
 
         tool_messages: list[Message] = []
+        repeat_notice: str | None = None
         for call in reply.tool_calls:
             if recorder is not None:
                 recorder.emit(
@@ -450,8 +453,10 @@ def run_agent_loop(
                     },
                 )
             repeat = guards.on_tool_call(call)
-            if repeat.warning and guard_warning is None:
-                guard_warning = repeat.warning
+            if repeat.warning:
+                repeat_notice = repeat.warning
+                if guard_warning is None:
+                    guard_warning = repeat.warning
             if repeat.stop:
                 lifecycle_state.transition(RunPhase.STOPPED)
                 return _finish(
@@ -514,7 +519,7 @@ def run_agent_loop(
                     timer = ToolTimer()
                     result = policy.execute_allowed(call, decision)
                     sink.on_tool_end(call.name, result.ok)
-                    _note_completion_effects(gate, call, result, changed_files)
+                    _note_completion_effects(gate, call, result, changed_files, guards)
                     body, _truncated = truncate_content(
                         policy.wrap_result(result),
                         max_output_chars,
@@ -612,7 +617,7 @@ def run_agent_loop(
                 except (ToolValidationError, UnknownToolError) as exc:
                     result = registry.tool_error(call, str(exc))
                 sink.on_tool_end(call.name, result.ok)
-                _note_completion_effects(gate, call, result, changed_files)
+                _note_completion_effects(gate, call, result, changed_files, guards)
                 body, _truncated = truncate_content(result.content, max_output_chars, keep="tail")
                 if recorder is not None:
                     recorder.complete_tool(
@@ -649,3 +654,6 @@ def run_agent_loop(
                 )
 
         chat_history.extend(tool_messages)
+        if repeat_notice is not None:
+            # DESIGN 8.12: the repeat detector injects its warning once.
+            chat_history.append(Message(role=MessageRole.USER, content=repeat_notice))

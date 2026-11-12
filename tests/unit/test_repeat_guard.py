@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from codeagent.config import ToolSettings
 from codeagent.loop.guards import LoopGuards
 from codeagent.loop.runner import run_agent_loop
@@ -21,8 +19,6 @@ from codeagent.providers.base import (
 )
 from codeagent.providers.fake import FakeProvider
 from codeagent.tools.registry import ToolRegistry
-
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-06")
 
 _TEST_CALL = ToolCall(id="t", name="echo", args={"message": "run the tests"})
 
@@ -39,7 +35,6 @@ def _done() -> list[Any]:
     return [TextDelta(text="done"), Stop(reason=StopReason.STOP)]
 
 
-@_XFAIL
 def test_guard_window_restarts_after_a_workspace_change() -> None:
     guards = LoopGuards(max_iterations=50)
     for _ in range(6):
@@ -57,7 +52,6 @@ def test_guard_still_warns_then_stops_without_changes() -> None:
     assert results[3].stop
 
 
-@_XFAIL
 def test_edit_then_test_loop_is_not_a_repeat(tmp_path: Path) -> None:
     registry = ToolRegistry()
     registry.register_filesystem_tools(tmp_path, ToolSettings())
@@ -91,7 +85,6 @@ def test_failed_edit_does_not_restart_the_window(tmp_path: Path) -> None:
     assert result.stop_reason == "repeat_tool_calls"
 
 
-@_XFAIL
 def test_model_is_told_about_the_repeat_warning() -> None:
     turns = [_turn(_TEST_CALL), _turn(_TEST_CALL), _turn(_TEST_CALL), _done()]
     result = run_agent_loop("repeat", FakeProvider(turns), ToolRegistry(), max_iterations=20)
