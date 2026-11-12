@@ -251,9 +251,10 @@ def _grep_command(args: GrepArgs, rg: str) -> list[str]:
         command.extend(["-C", str(args.context)])
     if args.glob:
         command.extend(["-g", args.glob])
-    command.append(args.pattern)
+    # -e and -- keep model-supplied text from being parsed as ripgrep options.
+    command.extend(["-e", args.pattern])
     if args.path:
-        command.append(args.path)
+        command.extend(["--", args.path])
     return command
 
 
