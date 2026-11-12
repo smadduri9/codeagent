@@ -187,7 +187,22 @@ def execute_agent_run(
             diff = finish_isolation(isolation)
             if diff.strip():
                 console.print("[bold]final diff[/bold]:")
-                console.print(diff)
+                console.print(diff, markup=False, highlight=False)
+            if isolation.saved_branch is not None:
+                branch = isolation.saved_branch
+                console.print(
+                    f"work saved on branch {branch}; take it with: git merge {branch}",
+                    markup=False,
+                    highlight=False,
+                    soft_wrap=True,
+                )
+            elif isolation.kept_worktree:
+                console.print(
+                    f"could not commit the work; it is still in {isolation.worktree_path}",
+                    markup=False,
+                    highlight=False,
+                    soft_wrap=True,
+                )
         if store is not None:
             store.close()
 

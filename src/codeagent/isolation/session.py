@@ -12,7 +12,7 @@ from pathlib import Path
 
 from codeagent.config import IsolationSettings
 from codeagent.isolation.checkpoint import CheckpointStore
-from codeagent.isolation.git_wrapper import run_git
+from codeagent.isolation.git_wrapper import GitCommandError, run_git
 from codeagent.isolation.lock import RunLock
 
 
@@ -38,6 +38,41 @@ class IsolationSession:
     lock: RunLock
     checkpoints: CheckpointStore
     meta_path: Path
+    saved_branch: str | None = None
+    kept_worktree: bool = False
+
+    def save_work(self) -> None:
+        """Commit a worktree run's files to its branch so they outlive the worktree."""
+        if self.mode != "worktree" or self.worktree_path is None:
+            return
+        try:
+            self.checkpoints.create("final")
+        except GitCommandError:
+            # Never delete files that could not be committed.
+            self.kept_worktree = True
+
+    def release(self) -> None:
+        """Tear down after a finished run without discarding its work."""
+        if self.mode != "worktree" or self.worktree_path is None:
+            self.cleanup()
+            return
+        try:
+            if self.kept_worktree:
+                return
+            head = run_git(self.git_root, ["rev-parse", self.branch_name], check=False)
+            changed = head.returncode == 0 and head.stdout.strip() != self.baseline_ref
+            run_git(
+                self.git_root,
+                ["worktree", "remove", "--force", str(self.worktree_path)],
+                check=False,
+            )
+            shutil.rmtree(self.worktree_path, ignore_errors=True)
+            if changed:
+                self.saved_branch = self.branch_name
+            else:
+                run_git(self.git_root, ["branch", "-D", self.branch_name], check=False)
+        finally:
+            self.lock.release()
 
     def finish(self) -> str:
         """Return final diff text; does not push."""
@@ -92,11 +127,16 @@ def git_isolation_mode(settings: IsolationSettings) -> str:
 
 
 def finish_isolation(session: IsolationSession) -> str:
-    """Compute the final diff and tear down isolation (releases the run lock)."""
+    """Save the work, compute the final diff, and release the run lock.
+
+    A worktree run's edits are committed to ``codeagent/<run_id>`` and the branch
+    is kept (DESIGN 8.14). Only the worktree directory is removed.
+    """
     try:
+        session.save_work()
         return session.finish()
     finally:
-        session.cleanup()
+        session.release()
 
 
 def begin_isolation(
