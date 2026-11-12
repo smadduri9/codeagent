@@ -209,6 +209,9 @@ def _begin_isolation_locked(
 
     baseline = _baseline_ref(workspace)
     checkpoints = CheckpointStore.load(root, run_id, workspace=workspace)
+    if not checkpoints.records:
+        # DESIGN 8.14: a checkpoint exists before the first edit.
+        checkpoints.record("baseline", baseline)
     _record_meta(
         meta_path,
         {

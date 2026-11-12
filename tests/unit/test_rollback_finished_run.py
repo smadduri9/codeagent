@@ -12,8 +12,6 @@ from codeagent.cli import app
 from codeagent.config import IsolationSettings
 from codeagent.isolation.session import IsolationSession, begin_isolation, finish_isolation
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-09")
-
 
 def _git(repo: Path, *args: str) -> str:
     done = subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, text=True)
@@ -39,7 +37,6 @@ def _finished_run(repo: Path, run_id: str) -> IsolationSession:
     return session
 
 
-@_XFAIL
 def test_begin_records_a_baseline_checkpoint(tmp_path: Path) -> None:
     repo = _repo(tmp_path / "repo")
     session = begin_isolation(repo, "rb-0", IsolationSettings(mode="worktree"))
@@ -51,7 +48,6 @@ def test_begin_records_a_baseline_checkpoint(tmp_path: Path) -> None:
         session.cleanup()
 
 
-@_XFAIL
 def test_rollback_of_a_finished_run_resets_its_branch_to_baseline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -65,7 +61,6 @@ def test_rollback_of_a_finished_run_resets_its_branch_to_baseline(
     assert _git(repo, "status", "--porcelain") == ""
 
 
-@_XFAIL
 def test_rollback_to_the_final_checkpoint_keeps_the_work(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -78,7 +73,6 @@ def test_rollback_to_the_final_checkpoint_keeps_the_work(
     assert _git(repo, "rev-parse", "codeagent/rb-2") == before
 
 
-@_XFAIL
 def test_rollback_refuses_when_the_run_branch_is_checked_out(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
