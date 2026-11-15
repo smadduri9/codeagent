@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+# File names treated as secrets by the permission rules and skipped by directory searches.
+SECRET_FILE_GLOBS = (".env", ".env.*", "*.pem", "id_rsa*", "*credentials*")
+
 
 class WorkspacePathError(ValueError):
     """The path leaves the workspace or is invalid."""
