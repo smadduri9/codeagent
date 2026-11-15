@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -29,9 +30,11 @@ def _script(tmp_path: Path) -> str:
 def test_help_describes_non_interactive(command: str) -> None:
     result = CliRunner().invoke(app, [command, "--help"], terminal_width=200)
     assert result.exit_code == 0
-    assert "--non-interactive" in result.output
-    assert "Auto-approve" not in result.output
-    assert "--yes" not in result.output
+    # Rich adds colour codes around option names on CI; strip them before matching.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--non-interactive" in plain
+    assert "Auto-approve" not in plain
+    assert "--yes" not in plain
 
 
 def test_non_interactive_flag_is_accepted(tmp_path: Path) -> None:
