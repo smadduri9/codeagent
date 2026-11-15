@@ -18,8 +18,6 @@ from codeagent.providers.base import (
 from codeagent.providers.managed import ManagedProvider, _parse_retry_after
 from codeagent.providers.quota_errors import QuotaExhaustedError
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-15")
-
 _GROQ_429 = (
     "Error code: 429 - {'error': {'message': 'Rate limit reached for model `m` on tokens "
     "per minute (TPM): Limit 8000, Used 7900, Requested 600. Please try again in 7.66s.'}}"
@@ -53,7 +51,6 @@ def _request() -> ModelRequest:
     )
 
 
-@_XFAIL
 def test_retry_after_is_read_from_the_wait_hint_not_the_status_code() -> None:
     cases = {
         _GROQ_429.lower(): 7.66,
@@ -68,7 +65,6 @@ def test_retry_after_is_read_from_the_wait_hint_not_the_status_code() -> None:
         assert _parse_retry_after(message) == pytest.approx(expected), message
 
 
-@_XFAIL
 def test_short_rate_limit_waits_then_retries() -> None:
     inner = _Sequence([RuntimeError(_GROQ_429), Stop(reason=StopReason.STOP)])
     slept: list[float] = []
@@ -97,7 +93,6 @@ def test_repeated_rate_limits_give_up() -> None:
     assert inner.calls <= 4
 
 
-@_XFAIL
 def test_pacing_waits_for_the_bucket_to_refill() -> None:
     now = [1000.0]
     slept: list[float] = []
