@@ -109,6 +109,11 @@ def _is_dirty(repo: Path) -> bool:
     return bool(status.stdout.strip())
 
 
+def has_uncommitted_changes(repo: Path) -> bool:
+    """True when the checkout has changes a worktree created from HEAD will not contain."""
+    return _is_dirty(repo)
+
+
 _EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 

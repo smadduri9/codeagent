@@ -22,8 +22,6 @@ from codeagent.providers.base import (
     UsageEvent,
 )
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-11")
-
 
 def _git(repo: Path, *args: str) -> str:
     done = subprocess.run(["git", *args], cwd=repo, check=False, capture_output=True, text=True)
@@ -72,7 +70,6 @@ def _branches(repo: Path) -> list[str]:
     return _git(repo, "branch", "--list", "codeagent/*", "--format=%(refname:short)").split()
 
 
-@_XFAIL
 def test_run_is_isolated_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _repo(tmp_path, monkeypatch)
     result = CliRunner().invoke(app, ["run", "add a feature", "--fake-script", _script(tmp_path)])
@@ -83,7 +80,6 @@ def test_run_is_isolated_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert "run_id" in result.stderr
 
 
-@_XFAIL
 def test_no_persist_edits_the_checkout_directly(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -96,7 +92,6 @@ def test_no_persist_edits_the_checkout_directly(
     assert not (repo / ".codeagent" / "state.db").exists()
 
 
-@_XFAIL
 def test_isolated_run_says_uncommitted_changes_are_not_included(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -117,7 +112,6 @@ def test_clean_checkout_gets_no_uncommitted_note(
     assert "uncommitted changes" not in result.stderr
 
 
-@_XFAIL
 def test_help_documents_the_opt_out() -> None:
     result = CliRunner().invoke(app, ["run", "--help"])
     assert "--no-persist" in result.output

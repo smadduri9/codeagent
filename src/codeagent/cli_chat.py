@@ -75,6 +75,9 @@ def chat_command(
         "[dim]exit[/dim] / [dim]quit[/dim] / [dim]/exit[/dim] (Ctrl+D to leave)."
     )
     console.print(f"[dim]repo[/dim] {repo_root}")
+    console.print(
+        "[dim]chat edits this checkout directly; use `codeagent run` for an isolated run[/dim]"
+    )
 
     history: list[Message] | None = None
     session_goal: str | None = None
