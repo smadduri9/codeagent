@@ -95,3 +95,36 @@ skipped (no eval evidence). See decision records 0007, 0008, and 0009.
 - Live core12: not run in build session (quota preserved).
 - Repository intelligence: off until live baseline satisfies DESIGN 9.1.
 - Initial release scope complete except Docker sandbox (deferred).
+
+## Fix round 1 (review of November 2026)
+
+Fixes from a full code review, each merged as its own `fix/` pull request with a
+failing-first test. Decision records 0016 to 0019 cover the behaviour changes.
+
+| ID | Title | Branch |
+|---|---|---|
+| FIX-01 | Option injection in `git_show` and `grep` | `fix/01-option-injection` |
+| FIX-02 | Approval prompt shows tool arguments | `fix/02-approval-prompt-args` |
+| FIX-03 | `init` is idempotent | `fix/03-init-idempotent` |
+| FIX-04 | Tool and SDK exceptions become failed results | `fix/04-tool-exceptions` |
+| FIX-05 | A used approval asks again | `fix/05-approval-reask` |
+| FIX-06 | Repeat guard allows edit-then-test loops | `fix/06-repeat-guard` |
+| FIX-07 | A finished run keeps its work on its branch | `fix/07-keep-run-work` |
+| FIX-08 | Git and verification tools use the worktree | `fix/08-tools-use-workspace` |
+| FIX-09 | Rollback works after a run has finished | `fix/09-rollback-finished-run` |
+| FIX-10 | Resume continues inside the run's worktree | `fix/10-resume-in-worktree` |
+| FIX-11 | `run` is isolated by default | `fix/11-run-isolated-default` |
+| FIX-12 | `--yes` renamed to `--non-interactive` | `fix/12-non-interactive-flag` |
+| FIX-13 | Tracked repo config cannot set sensitive keys | `fix/13-repo-config-trust` |
+| FIX-14 | Risk levels for plan and verification tools | `fix/14-workflow-tool-risk` |
+| FIX-15 | Rate-limit waits follow the provider's hint | `fix/15-rate-limit-waits` |
+| FIX-16 | `edit_file` keeps CRLF line endings | `fix/16-edit-file-newlines` |
+| FIX-17 | Verification needs a passing check | `fix/17-verification-evidence` |
+| FIX-18 | Directory grep skips secret-looking files | `fix/18-grep-secret-files` |
+| FIX-19 | Tool calls that stream no arguments are kept | `fix/19-no-arg-tool-call` |
+| FIX-20 | Rebuilt history answers every tool call | `fix/20-resume-unanswered-calls` |
+| FIX-21 | README and operator guide match behaviour | `docs/21-readme-accuracy` |
+
+Not done in this round: isolation for `chat`, `WAITING_QUOTA` stop and resume,
+model-written compaction summaries, wiring edited files into the syntax check,
+and pruning of old `codeagent/<run_id>` branches.

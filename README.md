@@ -13,9 +13,9 @@ Built in Python 3.12. The CLI uses an OpenAI-compatible provider (Groq by defaul
 
 - Runs an iterative **native tool-calling loop** with iteration, repeat, and budget guards.
 - Applies a **deterministic permission engine** before every tool call; destructive actions require **single-use** human approval.
-- Edits in an isolated **git worktree** (or branch fallback) with **checkpoints**, rollback, and a final diff.
+- `codeagent run` edits in an isolated **git worktree** (or branch fallback), commits the result to a `codeagent/<run_id>` branch for you to merge, and prints the final diff; `rollback` moves that branch back to a checkpoint. `chat` and `run --no-persist` edit the checkout directly.
 - Runs a **verification pipeline** and **completion gate** so a run cannot finish as fully verified without recorded check evidence.
-- Persists run state in **SQLite** for resume after interrupt, crash, or daily quota exhaustion (`WAITING_QUOTA`).
+- Persists run state in **SQLite** for resume after an interrupt, a crash, or a budget stop. Stopping and resuming on daily quota exhaustion (`WAITING_QUOTA`) is specified but not wired yet: a rate-limit wait longer than `max_wait_s` ends the run.
 - Records **events** for reconstruction via `codeagent trace`.
 
 ## Demo
@@ -90,9 +90,9 @@ codeagent trace
 |---------|---------|
 | `codeagent` / `chat` | Interactive chat REPL (default when no subcommand) |
 | `run` | Start a goal-directed run with streaming output |
-| `resume` | Continue a saved run (including after quota wait) |
+| `resume` | Continue a saved run inside its own worktree |
 | `status` | Show run phase and budgets |
-| `rollback` | Restore from a checkpoint |
+| `rollback` | Move a run's branch (or live worktree) back to a checkpoint |
 | `init` | Scaffold local agent config in a repo |
 | `trace` | Reconstruct events for a run |
 | `eval` | Run the evaluation harness (replay or live slices) |
@@ -103,8 +103,8 @@ codeagent trace
 - **Safety is not promptable.** Allow, ask, and deny come from table-driven rules ([`permissions/`](src/codeagent/permissions/)), not model judgment (DESIGN D4, section 8.5).
 - **Tool output is untrusted.** File and command text cannot change permissions (section 8.5, `tests/security/`).
 - **Stable prompt prefix** for the run: system prompt and tool definitions stay fixed; compaction appends history (DESIGN D9, section 8.6).
-- **Main vs cheap model** routing for cost control on small internal calls (DESIGN D12).
-- **Free-tier pacing:** client-side rate limits, quota headers, graceful stop and resume (DESIGN section 8.20).
+- **Model selection:** when `[model].cheap` is set it runs the whole agent loop, otherwise `main` does. Routing only small internal calls to the cheap model (DESIGN D12) is not implemented.
+- **Free-tier pacing:** client-side rate limits, and on HTTP 429 a wait for the provider's retry hint (DESIGN section 8.20). Reading quota headers is not wired.
 
 Shell strings cannot be proven safe by parsing; `run_command` uses argument arrays, `bash` is classified with default-ask, and optional Docker sandboxing is available (see [docs/decisions/0009-docker-sandbox-approach.md](docs/decisions/0009-docker-sandbox-approach.md)).
 
@@ -137,6 +137,9 @@ Live runs use `python -m evals.swebench_live --out <dir> --cap <usd>`. The cap i
 
 - Full design: [DESIGN.md](DESIGN.md). Build history: [docs/PROGRESS.md](docs/PROGRESS.md). Decision records: [docs/decisions/](docs/decisions/).
 - **Repository indexing (phase 9) is gated** on evaluation evidence in DESIGN section 9.1 ([docs/decisions/0008-phase-9-gate-not-met.md](docs/decisions/0008-phase-9-gate-not-met.md)). Search stays in the loop with `grep`, `glob`, and `read_file` until data supports an index.
+- **Known gaps:** `chat` is not isolated ([decision 0018](docs/decisions/0018-run-isolated-by-default.md)); compaction replaces dropped history with a fixed marker rather than a model-written summary; the syntax check in the verification pipeline does not yet receive the list of edited files; old `codeagent/<run_id>` branches are not pruned.
+- **Configuration trust:** a `.codeagent/config.toml` that is tracked by git may not set the endpoint, the key variable, verification commands, or permissions ([decision 0019](docs/decisions/0019-tracked-repo-config-trust.md)). In a directory unpacked from an archive nothing is tracked, so read that file before running the agent there.
+- **Non-interactive runs:** `--non-interactive` never prompts and denies every call that needs approval. Nothing auto-approves Ask-tier calls.
 - **Scope:** tuned for small repositories and focused tasks under Groq free-tier context and quota limits (DESIGN section 8.20). Not aimed at large monorepos or Windows.
 
 ## Repository map
