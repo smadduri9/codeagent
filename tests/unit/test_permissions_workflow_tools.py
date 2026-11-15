@@ -12,8 +12,6 @@ from codeagent.permissions.rules import default_tool_risk
 from codeagent.permissions.types import RiskLevel
 from codeagent.providers.base import ToolCall
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-14")
-
 _CASES: list[tuple[str, dict[str, object], RiskLevel]] = [
     ("update_plan", {"items": [{"text": "step", "status": "pending"}]}, RiskLevel.READ_ONLY),
     ("run_tests", {}, RiskLevel.LOCAL_MUTATION),
@@ -27,7 +25,6 @@ def _decide(name: str, args: dict[str, object], tmp_path: Path, settings: Settin
     return decide(ToolCall(id="1", name=name, args=args), args, run)
 
 
-@_XFAIL
 @pytest.mark.parametrize(("name", "args", "level"), _CASES)
 def test_workflow_tools_are_allowed_by_rule(
     name: str, args: dict[str, object], level: RiskLevel, tmp_path: Path
@@ -38,7 +35,6 @@ def test_workflow_tools_are_allowed_by_rule(
     assert default_tool_risk(name) is level
 
 
-@_XFAIL
 @pytest.mark.parametrize("name", ["run_tests", "run_verification"])
 def test_verification_tools_ask_when_edit_mode_is_ask(name: str, tmp_path: Path) -> None:
     settings = Settings(permissions=PermissionSettings(edit_mode="ask"))
@@ -47,7 +43,6 @@ def test_verification_tools_ask_when_edit_mode_is_ask(name: str, tmp_path: Path)
     assert decision.risk_level is RiskLevel.LOCAL_MUTATION
 
 
-@_XFAIL
 def test_update_plan_never_asks(tmp_path: Path) -> None:
     settings = Settings(permissions=PermissionSettings(edit_mode="ask"))
     assert isinstance(_decide("update_plan", {"items": []}, tmp_path, settings), Allow)

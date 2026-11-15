@@ -43,6 +43,12 @@ def default_tool_risk(tool_name: str) -> RiskLevel:
         "git_show": RiskLevel.READ_ONLY,
         "web_fetch": RiskLevel.EXTERNAL_SIDE_EFFECT,
         "echo": RiskLevel.READ_ONLY,
+        # Plan rows are agent state, not workspace content.
+        "update_plan": RiskLevel.READ_ONLY,
+        # These run only the operator's configured verification commands, which
+        # DESIGN 8.6 allows; a tracked repo config cannot set them (decision 0019).
+        "run_tests": RiskLevel.LOCAL_MUTATION,
+        "run_verification": RiskLevel.LOCAL_MUTATION,
     }
     return mapping.get(tool_name, RiskLevel.EXTERNAL_SIDE_EFFECT)
 
