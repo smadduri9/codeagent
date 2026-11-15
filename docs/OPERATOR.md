@@ -91,25 +91,33 @@ text and tool activity appear as the run progresses, then the final **answer** b
 Send another goal to continue the conversation, or leave with `exit`, `quit`, `/exit`, or
 Ctrl+D.
 
-Use `-y` / `--yes` to auto-approve Ask-tier tools in chat mode.
+Chat edits the checkout directly; it is not isolated in a worktree. Use
+`--non-interactive` to never prompt: every Ask-tier tool call is then denied.
 
 ## Run the agent (one-shot)
 
 From the repository root:
 
 ```bash
-codeagent run "Describe your task in plain language" --persist
+codeagent run "Describe your task in plain language"
 ```
 
 One-shot runs also stream model output to the terminal and print a final **answer** when
 the assistant ends with text.
 
-- `--persist` saves the run to SQLite (`.codeagent/state.db`), writes a trace to
-  `.codeagent/traces/<run_id>.jsonl` and the `events` table, creates a git worktree
-  (or branch fallback), and prints a final diff when finished.
+- By default a run saves its state to SQLite (`.codeagent/state.db`), writes a trace to
+  `.codeagent/traces/<run_id>.jsonl` and the `events` table, and works in a git worktree
+  (or branch fallback) created from the last commit. Uncommitted changes in your
+  checkout are not part of the run.
+- When it finishes, the work is committed to the branch `codeagent/<run_id>` and the
+  final diff is printed. Your checkout is not changed. Take the work with
+  `git merge codeagent/<run_id>`, or discard it with `git branch -D codeagent/<run_id>`.
+- `--no-persist` skips all of that and edits the checkout directly, with no budgets,
+  resume, or rollback.
 - The CLI prompts for **Ask**-tier tools (destructive shell, deletes, etc.). Use
   `y` once, `s` for the rest of the session, or `n` to deny.
-- Use `-y` / `--yes` to auto-approve Ask-tier tools (CI or trusted runs only).
+- `--non-interactive` never prompts and denies every Ask-tier tool call. Nothing
+  auto-approves them. `--yes` is a deprecated alias with the same effect.
 
 Scripted demos and tests still use the hidden flag:
 
@@ -117,7 +125,7 @@ Scripted demos and tests still use the hidden flag:
 codeagent run "goal" --fake-script path/to/script.json
 ```
 
-## Resume after interrupt or quota stop
+## Resume after an interrupt or budget stop
 
 List runs:
 
@@ -138,7 +146,7 @@ codeagent trace <run_id>
 codeagent status <run_id>
 ```
 
-If `codeagent run --persist` fails with **another run is active** but no agent is
+If `codeagent run` fails with **another run is active** but no agent is
 running, the lock file may be stale (for example after a crash). Check that no
 `codeagent` process is using the repo, then:
 
@@ -181,7 +189,7 @@ codeagent
 Or for a single non-interactive goal with persistence:
 
 ```bash
-codeagent run "List the top-level files and summarize the project in three bullets" --persist
+codeagent run "List the top-level files and summarize the project in three bullets"
 ```
 
 Use a small public Python repo and a short goal to stay within the free tier.
