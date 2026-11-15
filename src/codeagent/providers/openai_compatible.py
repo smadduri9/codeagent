@@ -157,10 +157,11 @@ class OpenAICompatibleProvider:
                             delta=tool_delta.function.arguments,
                         )
             if choice.finish_reason:
-                for index, raw_args in pending_args.items():
+                # A call with no arguments streams a name but no argument text.
+                for index in sorted(pending_names.keys() | pending_args.keys()):
                     call_id = pending_ids.get(index, f"call_{index}")
                     name = pending_names.get(index, "unknown")
-                    args = _parse_tool_args(raw_args)
+                    args = _parse_tool_args(pending_args.get(index, ""))
                     yield ToolCallEnd(call=ToolCall(id=call_id, name=name, args=args))
                 pending_args.clear()
                 pending_ids.clear()

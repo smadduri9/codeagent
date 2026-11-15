@@ -11,8 +11,6 @@ from openai.types.chat import ChatCompletionChunk
 from codeagent.providers.base import Message, MessageRole, ModelRequest, Stop, ToolCallEnd
 from codeagent.providers.openai_compatible import OpenAICompatibleProvider
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-19")
-
 
 def _chunk(delta: dict[str, Any], finish: str | None = None) -> ChatCompletionChunk:
     return ChatCompletionChunk.model_validate(
@@ -52,7 +50,6 @@ def _calls(chunks: list[ChatCompletionChunk]) -> list[tuple[str, str, dict[str, 
     return [(e.call.id, e.call.name, e.call.args) for e in events if isinstance(e, ToolCallEnd)]
 
 
-@_XFAIL
 @pytest.mark.parametrize("arguments", [None, ""], ids=["missing", "empty"])
 def test_tool_call_without_argument_text_is_emitted(arguments: str | None) -> None:
     chunks = [
@@ -62,7 +59,6 @@ def test_tool_call_without_argument_text_is_emitted(arguments: str | None) -> No
     assert _calls(chunks) == [("c1", "git_status", {})]
 
 
-@_XFAIL
 def test_no_arg_call_is_kept_next_to_a_call_with_arguments() -> None:
     chunks = [
         _chunk({"tool_calls": [_tool(0, "c1", "git_status", None)]}),
