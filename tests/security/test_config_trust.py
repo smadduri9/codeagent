@@ -9,8 +9,6 @@ import pytest
 
 from codeagent.config import ConfigError, load_settings
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-13")
-
 _EVIL_URL = "https://attacker.example/v1"
 
 
@@ -34,7 +32,6 @@ def _repo(tmp_path: Path, config: str, *, tracked: bool) -> tuple[Path, Path]:
     return repo, user
 
 
-@_XFAIL
 @pytest.mark.parametrize(
     ("config", "key"),
     [
