@@ -4,14 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from codeagent.config import ToolSettings
 from codeagent.providers.base import ToolCall
 from codeagent.tools.base import ToolResult
 from codeagent.tools.registry import ToolRegistry
-
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-16")
 
 
 def _edit(tmp_path: Path, raw: bytes, args: dict[str, object]) -> tuple[ToolResult, bytes]:
@@ -24,14 +20,12 @@ def _edit(tmp_path: Path, raw: bytes, args: dict[str, object]) -> tuple[ToolResu
     return result, target.read_bytes()
 
 
-@_XFAIL
 def test_crlf_file_stays_crlf(tmp_path: Path) -> None:
     result, after = _edit(tmp_path, b"a\r\nb\r\nc\r\n", {"old_string": "b", "new_string": "z"})
     assert result.ok
     assert after == b"a\r\nz\r\nc\r\n"
 
 
-@_XFAIL
 def test_crlf_file_stays_crlf_for_a_multi_line_replacement(tmp_path: Path) -> None:
     result, after = _edit(
         tmp_path, b"a\r\nb\r\nc\r\n", {"old_string": "a\nb", "new_string": "x\ny\nz"}
@@ -52,7 +46,6 @@ def test_mixed_line_endings_are_normalised_to_lf_as_before(tmp_path: Path) -> No
     assert after == b"a\nz\nc\n"
 
 
-@_XFAIL
 def test_empty_old_string_with_replace_all_is_rejected(tmp_path: Path) -> None:
     result, after = _edit(
         tmp_path, b"abc\n", {"old_string": "", "new_string": "-", "replace_all": True}

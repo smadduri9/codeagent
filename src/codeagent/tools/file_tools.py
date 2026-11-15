@@ -317,12 +317,21 @@ def handle_write_file(ctx: WorkspaceToolContext, args: WriteFileArgs) -> ToolRes
     return _ok("write_file", f"created {args.path}")
 
 
+def _file_newline(path: Path) -> str:
+    """Return "\\r\\n" when every line ending in the file is CRLF, otherwise "\\n"."""
+    raw = path.read_bytes()
+    crlf = raw.count(b"\r\n")
+    return "\r\n" if crlf and crlf == raw.count(b"\n") else "\n"
+
+
 def handle_edit_file(ctx: WorkspaceToolContext, args: EditFileArgs) -> ToolResult:
     resolved = _resolve(ctx, args.path)
     if isinstance(resolved, ToolResult):
         return resolved
     if not resolved.is_file():
         return _fail("edit_file failed", "not a file")
+    if not args.old_string:
+        return _fail("edit_file failed", "old_string must not be empty")
     before = resolved.read_text(encoding="utf-8")
     stale = ctx.read_tracker.check_stale(resolved, before)
     if stale is not None:
@@ -344,7 +353,9 @@ def handle_edit_file(ctx: WorkspaceToolContext, args: EditFileArgs) -> ToolResul
     else:
         after = before.replace(args.old_string, args.new_string, 1)
     parse_error = _parse_check(resolved, after)
-    resolved.write_text(after, encoding="utf-8")
+    # Keep CRLF files CRLF: the text above was read with universal newlines.
+    with resolved.open("w", encoding="utf-8", newline=_file_newline(resolved)) as handle:
+        handle.write(after)
     _record_edit(ctx, resolved, before, after)
     parts = [f"edited {args.path}"]
     if parse_error:
