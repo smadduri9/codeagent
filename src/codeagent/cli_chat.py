@@ -12,7 +12,7 @@ from rich.prompt import Prompt
 
 from codeagent.cli_bootstrap import ensure_workspace, validate_live_run
 from codeagent.cli_output import CliRunOutputRenderer
-from codeagent.cli_run import execute_agent_run
+from codeagent.cli_run import execute_agent_run, resolve_non_interactive_flag
 from codeagent.config import ConfigError, load_settings
 from codeagent.loop.interrupt import InterruptController, install_sigint_handler
 from codeagent.providers.base import Message, MessageRole, ModelEvent
@@ -40,9 +40,16 @@ def _read_goal() -> str | None:
 
 
 def chat_command(
+    non_interactive: Annotated[
+        bool,
+        typer.Option(
+            "--non-interactive",
+            help="Never prompt; deny every tool call that would need approval.",
+        ),
+    ] = False,
     yes: Annotated[
         bool,
-        typer.Option("--yes", "-y", help="Auto-approve Ask-tier tools (non-interactive)."),
+        typer.Option("--yes", "-y", hidden=True, help="Deprecated alias of --non-interactive."),
     ] = False,
     fake_script: Annotated[
         Path | None,
@@ -68,7 +75,7 @@ def chat_command(
     settings = load_settings(cwd)
     interrupt = InterruptController()
     install_sigint_handler(interrupt)
-    interactive = not yes and not scripted
+    interactive = not resolve_non_interactive_flag(non_interactive, yes) and not scripted
 
     console.print(
         "[bold]CodeAgent[/bold] — describe a goal, or type "

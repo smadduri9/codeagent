@@ -11,8 +11,6 @@ from typer.testing import CliRunner
 from codeagent.cli import app
 from codeagent.providers.base import ModelEvent, Stop, StopReason, TextDelta, Usage, UsageEvent
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-12")
-
 
 def _script(tmp_path: Path) -> str:
     script: list[list[ModelEvent]] = [
@@ -27,7 +25,6 @@ def _script(tmp_path: Path) -> str:
     return str(path)
 
 
-@_XFAIL
 @pytest.mark.parametrize("command", ["run", "chat", "resume"])
 def test_help_describes_non_interactive(command: str) -> None:
     result = CliRunner().invoke(app, [command, "--help"], terminal_width=200)
@@ -37,7 +34,6 @@ def test_help_describes_non_interactive(command: str) -> None:
     assert "--yes" not in result.output
 
 
-@_XFAIL
 def test_non_interactive_flag_is_accepted(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
@@ -47,7 +43,6 @@ def test_non_interactive_flag_is_accepted(tmp_path: Path) -> None:
     assert "deprecated" not in result.stderr
 
 
-@_XFAIL
 def test_yes_still_works_and_says_it_approves_nothing(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app, ["run", "goal", "--no-persist", "--yes", "--fake-script", _script(tmp_path)]

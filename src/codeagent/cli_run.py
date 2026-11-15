@@ -58,6 +58,17 @@ def _resolve_provider(
     return provider, model, False
 
 
+def resolve_non_interactive_flag(non_interactive: bool, yes: bool) -> bool:
+    """Fold the deprecated --yes into --non-interactive, saying what it really does."""
+    if yes:
+        console.print(
+            "[yellow]warning[/yellow]: --yes is deprecated and approves nothing; "
+            "it denies every call that needs approval. Use --non-interactive.",
+            soft_wrap=True,
+        )
+    return non_interactive or yes
+
+
 def finish_and_report(isolation: IsolationSession) -> None:
     """Finish isolation and tell the operator where the work is."""
     diff = finish_isolation(isolation)
@@ -240,16 +251,23 @@ def run_command(
             ),
         ),
     ] = True,
+    non_interactive: Annotated[
+        bool,
+        typer.Option(
+            "--non-interactive",
+            help="Never prompt; deny every tool call that would need approval.",
+        ),
+    ] = False,
     yes: Annotated[
         bool,
-        typer.Option("--yes", "-y", help="Auto-approve Ask-tier tools (non-interactive)."),
+        typer.Option("--yes", "-y", hidden=True, help="Deprecated alias of --non-interactive."),
     ] = False,
 ) -> None:
     """Run the agent loop against the configured Groq model (or a fake script)."""
     cwd = Path.cwd()
     repo_root = find_git_root(cwd)
     settings = load_settings(cwd)
-    interactive = not yes and fake_script is None
+    interactive = not resolve_non_interactive_flag(non_interactive, yes) and fake_script is None
     interrupt = InterruptController()
     install_sigint_handler(interrupt)
 
