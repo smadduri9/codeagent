@@ -15,8 +15,6 @@ from codeagent.state.history import rebuild_history
 from codeagent.state.session import begin_persisted_run, prepare_resume
 from codeagent.state.store import StateStore
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-20")
-
 
 def _interrupted_batch(tmp_path: Path, *, finished: int) -> tuple[StateStore, str]:
     """A step with three tool calls where only ``finished`` of them completed."""
@@ -48,7 +46,6 @@ def _unanswered(history: list[Message]) -> list[str]:
     return [call_id for call_id in asked if call_id not in answered]
 
 
-@_XFAIL
 @pytest.mark.parametrize("finished", [0, 1, 2])
 def test_rebuilt_history_answers_calls_that_never_ran(tmp_path: Path, finished: int) -> None:
     store, run_id = _interrupted_batch(tmp_path, finished=finished)
@@ -59,7 +56,6 @@ def test_rebuilt_history_answers_calls_that_never_ran(tmp_path: Path, finished: 
     store.close()
 
 
-@_XFAIL
 def test_prepare_resume_history_is_complete(tmp_path: Path) -> None:
     store, run_id = _interrupted_batch(tmp_path, finished=1)
     _ctx, history, _warnings = prepare_resume(store, run_id, settings=Settings())
