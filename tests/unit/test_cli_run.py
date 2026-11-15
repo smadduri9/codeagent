@@ -44,7 +44,8 @@ def test_run_with_fake_script(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(
         app,
-        ["run", "test goal", "--fake-script", str(adapter_path)],
+        # --no-persist: this test runs in the project checkout and must not isolate it.
+        ["run", "test goal", "--no-persist", "--fake-script", str(adapter_path)],
     )
     assert result.exit_code == 0
     stderr = result.stderr

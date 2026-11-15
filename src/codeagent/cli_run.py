@@ -18,6 +18,7 @@ from codeagent.isolation.session import (
     IsolationSession,
     begin_isolation,
     finish_isolation,
+    has_uncommitted_changes,
 )
 from codeagent.loop import RunResult, run_agent_loop
 from codeagent.loop.interrupt import InterruptController, install_sigint_handler
@@ -153,6 +154,11 @@ def execute_agent_run(
                 console.print(f"[bold red]error[/bold red]: {exc}")
                 raise typer.Exit(code=1) from exc
             workspace = isolation.workspace
+            if isolation.mode == "worktree" and has_uncommitted_changes(repo_root):
+                console.print(
+                    "[yellow]note[/yellow]: uncommitted changes in your checkout are not "
+                    "part of this run; it starts from the last commit",
+                )
 
         registry = build_tool_registry(
             workspace=workspace,
@@ -225,8 +231,15 @@ def run_command(
     ] = None,
     max_iterations: Annotated[int | None, typer.Option("--max-iterations")] = None,
     persist: Annotated[
-        bool, typer.Option("--persist", help="Persist run state to SQLite.")
-    ] = False,
+        bool,
+        typer.Option(
+            "--persist/--no-persist",
+            help=(
+                "Work in an isolated git worktree and save run state (default). "
+                "--no-persist edits this checkout directly, with no budgets or resume."
+            ),
+        ),
+    ] = True,
     yes: Annotated[
         bool,
         typer.Option("--yes", "-y", help="Auto-approve Ask-tier tools (non-interactive)."),
