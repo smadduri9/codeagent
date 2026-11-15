@@ -10,7 +10,7 @@ from pydantic import TypeAdapter
 from rich.console import Console
 
 from codeagent.cli_output import CliRunOutputRenderer
-from codeagent.cli_run import finish_and_report
+from codeagent.cli_run import finish_and_report, resolve_non_interactive_flag
 from codeagent.config import ConfigError, find_git_root, load_settings
 from codeagent.isolation.lock import RunLockError
 from codeagent.isolation.session import IsolationError, IsolationSession, resume_isolation
@@ -43,9 +43,16 @@ def resume_command(
         typer.Option("--fake-script", hidden=True, help="Replay scripted provider turns."),
     ] = None,
     max_iterations: Annotated[int | None, typer.Option("--max-iterations")] = None,
+    non_interactive: Annotated[
+        bool,
+        typer.Option(
+            "--non-interactive",
+            help="Never prompt; deny every tool call that would need approval.",
+        ),
+    ] = False,
     yes: Annotated[
         bool,
-        typer.Option("--yes", "-y", help="Auto-approve Ask-tier tools (non-interactive)."),
+        typer.Option("--yes", "-y", hidden=True, help="Deprecated alias of --non-interactive."),
     ] = False,
 ) -> None:
     """Continue a stopped run using persisted history."""
@@ -54,7 +61,7 @@ def resume_command(
     store = StateStore(default_state_db_path(repo_root))
     interrupt = InterruptController()
     install_sigint_handler(interrupt)
-    interactive = not yes and fake_script is None
+    interactive = not resolve_non_interactive_flag(non_interactive, yes) and fake_script is None
     isolation: IsolationSession | None = None
     try:
         ctx, history, warnings = prepare_resume(store, run_id, settings=settings)
