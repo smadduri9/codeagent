@@ -41,8 +41,16 @@ def handle_run_verification(
             duration_ms=check.duration_ms,
             evidence=check.evidence,
         )
-    ok = not any(c.status in {"fail", "flaky"} for c in checks)
+    failed = any(c.status in {"fail", "flaky"} for c in checks)
+    passed = any(c.status == "pass" for c in checks)
     body = "\n".join(f"{c.name}:{c.status}" for c in checks)
+    if not failed and not passed:
+        # Skipped and unavailable checks are not evidence (DESIGN 8.11).
+        body += (
+            "\nno check ran: nothing was verified. Configure [verify] commands "
+            "(codeagent init) or say why verification does not apply."
+        )
+    ok = passed and not failed
     return ToolResult(ok=ok, summary="verification", content=body, truncated=False)
 
 

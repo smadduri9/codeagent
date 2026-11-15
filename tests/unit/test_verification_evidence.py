@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from codeagent.config import Settings, VerifySettings
 from codeagent.state.store import StateStore
 from codeagent.tools.base import ToolResult
@@ -16,8 +14,6 @@ from codeagent.tools.verification_tools import (
     handle_run_tests,
     handle_run_verification,
 )
-
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-17")
 
 _PASS = [sys.executable, "-c", "raise SystemExit(0)"]
 _FAIL = [sys.executable, "-c", "raise SystemExit(1)"]
@@ -40,7 +36,6 @@ def _verify(tmp_path: Path, verify: VerifySettings, scope: str | None = None) ->
         store.close()
 
 
-@_XFAIL
 def test_nothing_configured_is_not_a_pass(tmp_path: Path) -> None:
     result = _verify(tmp_path, VerifySettings())
     assert not result.ok
@@ -48,7 +43,6 @@ def test_nothing_configured_is_not_a_pass(tmp_path: Path) -> None:
     assert "no check ran" in result.content
 
 
-@_XFAIL
 def test_run_tests_without_a_test_command_is_not_a_pass(tmp_path: Path) -> None:
     settings = Settings()
     store = StateStore(tmp_path / "state.db")
