@@ -15,7 +15,11 @@ from pydantic import BaseModel, Field
 
 from codeagent.tools.base import StrictArgs, ToolResult
 from codeagent.tools.gitignore import is_ignored, load_gitignore_patterns
-from codeagent.tools.paths import WorkspacePathError, resolve_workspace_path
+from codeagent.tools.paths import (
+    SECRET_FILE_GLOBS,
+    WorkspacePathError,
+    resolve_workspace_path,
+)
 from codeagent.tools.truncate import truncate_content
 from codeagent.tools.workspace_context import FileChangedEvent, WorkspaceToolContext
 
@@ -251,6 +255,10 @@ def _grep_command(args: GrepArgs, rg: str) -> list[str]:
         command.extend(["-C", str(args.context)])
     if args.glob:
         command.extend(["-g", args.glob])
+    # Last glob wins in ripgrep, so these exclusions override the model's glob. A
+    # secret file named explicitly in ``path`` is still searched: that call is Ask.
+    for secret in SECRET_FILE_GLOBS:
+        command.extend(["-g", f"!{secret}"])
     # -e and -- keep model-supplied text from being parsed as ripgrep options.
     command.extend(["-e", args.pattern])
     if args.path:

@@ -15,8 +15,6 @@ from codeagent.tools.workspace_context import WorkspaceToolContext
 
 pytestmark = pytest.mark.skipif(shutil.which("rg") is None, reason="ripgrep not installed")
 
-_XFAIL = pytest.mark.xfail(strict=True, reason="FIX-18")
-
 _SECRET_FILES = ["server.pem", "id_rsa", "id_rsa.pub", "aws_credentials.json", "deep/my.pem"]
 
 
@@ -28,7 +26,6 @@ def _workspace(tmp_path: Path) -> WorkspaceToolContext:
     return WorkspaceToolContext(workspace=tmp_path, settings=ToolSettings())
 
 
-@_XFAIL
 @pytest.mark.parametrize(
     "args",
     [

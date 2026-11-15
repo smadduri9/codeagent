@@ -16,12 +16,16 @@ from codeagent.permissions.types import (
     RiskLevel,
     strictest,
 )
-from codeagent.tools.paths import WorkspacePathError, resolve_workspace_path
+from codeagent.tools.paths import (
+    SECRET_FILE_GLOBS,
+    WorkspacePathError,
+    resolve_workspace_path,
+)
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
-_SECRET_GLOBS = (".env", ".env.*", "*.pem", "id_rsa*", "*credentials*")
+_SECRET_GLOBS = SECRET_FILE_GLOBS
 _PROTECTED_WRITE_PARTS = frozenset({".git", ".codeagent"})
 
 
