@@ -1,5 +1,7 @@
 """Validated configuration; loading settings never loads an API key."""
 
+import os
+import subprocess
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path
@@ -188,6 +190,59 @@ def _merge(base: dict[str, object], layer: Mapping[str, object]) -> dict[str, ob
     return result
 
 
+# Keys a repository's own config may not set when the file arrived with the repository:
+# they redirect the API key, run commands, or loosen permissions (decision 0019).
+_REPO_SENSITIVE: tuple[tuple[str, str | None], ...] = (
+    ("model", "base_url"),
+    ("model", "api_key_env"),
+    ("verify", None),
+    ("permissions", None),
+)
+
+
+def _sensitive_keys(layer: Mapping[str, object]) -> list[str]:
+    found: list[str] = []
+    for table, key in _REPO_SENSITIVE:
+        value = layer.get(table)
+        if key is None:
+            if value:
+                found.append(table)
+        elif isinstance(value, dict) and key in value:
+            found.append(f"{table}.{key}")
+    return found
+
+
+def _is_tracked(root: Path, path: Path) -> bool:
+    """True only when git reports the file as tracked, so it came with the repository."""
+    env = {"PATH": os.environ.get("PATH", ""), "HOME": os.environ.get("HOME", ""), "LC_ALL": "C"}
+    try:
+        done = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", str(path.relative_to(root))],
+            cwd=root,
+            env=env,  # no credentials reach the child
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return done.returncode == 0
+
+
+def _read_repo_layer(root: Path) -> dict[str, object]:
+    path = root / ".codeagent" / "config.toml"
+    layer = _read_toml(path)
+    refused = _sensitive_keys(layer)
+    if refused and _is_tracked(root, path):
+        # Key names only: diagnostics never include configured values.
+        raise ConfigError(
+            "Refusing repository configuration: .codeagent/config.toml is tracked by git "
+            f"and sets {', '.join(refused)}. Move these keys to ~/.codeagent/config.toml, "
+            "or untrack the file."
+        )
+    return layer
+
+
 def load_settings(
     start_dir: Path,
     *,
@@ -197,9 +252,8 @@ def load_settings(
     """Merge defaults, user TOML, repository TOML, and nested flag overrides."""
     root = find_git_root(start_dir)
     home = user_dir if user_dir is not None else Path.home() / ".codeagent"
-    data: dict[str, object] = {}
-    for path in (home / "config.toml", root / ".codeagent" / "config.toml"):
-        data = _merge(data, _read_toml(path))
+    data: dict[str, object] = _merge({}, _read_toml(home / "config.toml"))
+    data = _merge(data, _read_repo_layer(root))
     data = _merge(data, overrides or {})
     try:
         settings = Settings.model_validate(data)
