@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from time import sleep
@@ -70,13 +71,16 @@ class ManagedProvider:
 
     def _pace(self, charge: float) -> None:
         if self.request_bucket is not None:
-            wait = self.request_bucket.consume_or_wait(1.0)
-            if wait > 0:
-                self.sleeper(min(wait, 1.0))
+            self._wait_for(self.request_bucket, 1.0)
         if self.token_bucket is not None:
-            wait = self.token_bucket.consume_or_wait(charge)
-            if wait > 0:
-                self.sleeper(min(wait, 1.0))
+            self._wait_for(self.token_bucket, charge)
+
+    def _wait_for(self, bucket: TokenBucket, amount: float) -> None:
+        """Sleep until the bucket has refilled, then charge it (DESIGN 8.20)."""
+        wait = bucket.consume_or_wait(amount)
+        if wait > 0:
+            self.sleeper(min(wait, float(self.settings.quota.max_wait_s)))
+            bucket.consume_or_wait(amount)
 
     def _persist_headers(self, headers: RateLimitHeaders) -> None:
         if self.store is None:
@@ -104,8 +108,8 @@ class ManagedProvider:
                 yield from self._stream_with_hooks(active_req)
                 return
             except RateLimitError as exc:
-                if exc.retry_after_s <= self.settings.quota.max_wait_s:
-                    self.sleeper(min(exc.retry_after_s + random.random() * 0.25, 1.0))
+                if exc.retry_after_s <= self.settings.quota.max_wait_s and attempts < 4:
+                    self.sleeper(exc.retry_after_s + random.random() * 0.25)
                     continue
                 raise QuotaExhaustedError(
                     "retry-after exceeds max wait",
@@ -123,10 +127,9 @@ class ManagedProvider:
                 message = str(exc).lower()
                 if "429" in message or "rate limit" in message:
                     retry = _parse_retry_after(message)
-                    if retry <= self.settings.quota.max_wait_s:
-                        self.sleeper(min(retry, 1.0))
-                        if attempts < 4:
-                            continue
+                    if retry <= self.settings.quota.max_wait_s and attempts < 4:
+                        self.sleeper(retry + random.random() * 0.25)
+                        continue
                     raise QuotaExhaustedError("rate limit exhausted", reset_at=None) from exc
                 if "too large" in message:
                     raise ContextOverflowError(str(exc)) from exc
@@ -142,12 +145,25 @@ class ManagedProvider:
         yield from self.inner.stream(req)
 
 
+_TRY_AGAIN = re.compile(r"try again in\s+(?:(\d+)m(?!s))?\s*(?:(\d+(?:\.\d+)?)(ms|s))?")
+_RETRY_AFTER = re.compile(r"retry[-_ ]after[\s:=\"']+(\d+(?:\.\d+)?)")
+
+
 def _parse_retry_after(message: str) -> float:
-    for token in message.split():
-        try:
-            return float(token)
-        except ValueError:
-            continue
+    """Seconds the provider asked us to wait; 1.0 when the (lowercased) text has no hint.
+
+    Never reads a bare number: the HTTP status code is not a wait time.
+    """
+    hint = _TRY_AGAIN.search(message)
+    if hint is not None and (hint.group(1) or hint.group(2)):
+        seconds = float(hint.group(1) or 0) * 60.0
+        if hint.group(2):
+            value = float(hint.group(2))
+            seconds += value / 1000.0 if hint.group(3) == "ms" else value
+        return seconds
+    header = _RETRY_AFTER.search(message)
+    if header is not None:
+        return float(header.group(1))
     return 1.0
 
 
