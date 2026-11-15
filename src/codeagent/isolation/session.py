@@ -139,6 +139,62 @@ def finish_isolation(session: IsolationSession) -> str:
         session.release()
 
 
+def resume_isolation(git_root: Path, run_id: str) -> IsolationSession | None:
+    """Re-enter a worktree run's workspace so a resumed run never edits the checkout.
+
+    Returns None when the run was not isolated in a worktree (nothing to re-enter).
+    """
+    root = git_root.resolve()
+    meta_path = root / ".codeagent" / "runs" / run_id / "session.json"
+    if not meta_path.exists():
+        return None
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    worktree = meta.get("worktree_path")
+    if meta.get("mode") != "worktree" or not isinstance(worktree, str):
+        return None
+    branch_name = str(meta["branch_name"])
+    baseline = str(meta["baseline_ref"])
+    worktree_path = Path(worktree)
+    lock = RunLock.acquire(root, run_id)
+    try:
+        if not worktree_path.exists():
+            _restore_worktree(root, worktree_path, branch_name, baseline)
+    except Exception:
+        lock.release()
+        raise
+    return IsolationSession(
+        git_root=root,
+        run_id=run_id,
+        mode="worktree",
+        workspace=worktree_path,
+        user_root=root,
+        baseline_ref=baseline,
+        branch_name=branch_name,
+        worktree_path=worktree_path,
+        lock=lock,
+        checkpoints=CheckpointStore.load(root, run_id, workspace=worktree_path),
+        meta_path=meta_path,
+    )
+
+
+def _restore_worktree(root: Path, path: Path, branch_name: str, baseline: str) -> None:
+    run_git(root, ["worktree", "prune"], check=False)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    has_branch = run_git(
+        root,
+        ["rev-parse", "--verify", "--quiet", f"refs/heads/{branch_name}"],
+        check=False,
+    )
+    if has_branch.returncode == 0:
+        command = ["worktree", "add", str(path), branch_name]
+    else:
+        command = ["worktree", "add", "-b", branch_name, str(path), baseline]
+    added = run_git(root, command, check=False)
+    if added.returncode != 0:
+        detail = (added.stderr or added.stdout).strip()
+        raise IsolationError(f"cannot restore the run's worktree: {detail}")
+
+
 def begin_isolation(
     git_root: Path,
     run_id: str,

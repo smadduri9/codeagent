@@ -10,7 +10,10 @@ from pydantic import TypeAdapter
 from rich.console import Console
 
 from codeagent.cli_output import CliRunOutputRenderer
+from codeagent.cli_run import finish_and_report
 from codeagent.config import ConfigError, find_git_root, load_settings
+from codeagent.isolation.lock import RunLockError
+from codeagent.isolation.session import IsolationError, IsolationSession, resume_isolation
 from codeagent.loop.interrupt import InterruptController, install_sigint_handler
 from codeagent.providers.base import ModelEvent
 from codeagent.providers.factory import build_managed_provider
@@ -52,6 +55,7 @@ def resume_command(
     interrupt = InterruptController()
     install_sigint_handler(interrupt)
     interactive = not yes and fake_script is None
+    isolation: IsolationSession | None = None
     try:
         ctx, history, warnings = prepare_resume(store, run_id, settings=settings)
         run = store.get_run(run_id)
@@ -68,7 +72,13 @@ def resume_command(
             except ConfigError as exc:
                 raise typer.BadParameter(str(exc)) from exc
             scripted = False
-        workspace = Path(run.repo_path)
+        try:
+            isolation = resume_isolation(repo_root, run_id)
+        except (RunLockError, IsolationError) as exc:
+            console.print(f"[bold red]error[/bold red]: {exc}")
+            raise typer.Exit(code=1) from exc
+        # A worktree run continues in its worktree; the checkout is never edited.
+        workspace = isolation.workspace if isolation is not None else Path(run.repo_path)
         registry = build_tool_registry(
             workspace=workspace,
             repo_root=repo_root,
@@ -104,6 +114,8 @@ def resume_command(
             context=context,
         )
     finally:
+        if isolation is not None:
+            finish_and_report(isolation)
         store.close()
 
     renderer.print_final_answer(result.history)
