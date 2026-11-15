@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -114,4 +115,6 @@ def test_clean_checkout_gets_no_uncommitted_note(
 
 def test_help_documents_the_opt_out() -> None:
     result = CliRunner().invoke(app, ["run", "--help"])
-    assert "--no-persist" in result.output
+    # Rich adds colour codes around option names on CI; strip them before matching.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--no-persist" in plain
