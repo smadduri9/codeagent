@@ -8,6 +8,8 @@ import sqlite3
 from codeagent.providers.base import Message, MessageRole
 from codeagent.state.store import StateStore
 
+NOT_EXECUTED_MSG = "not executed: the run stopped before this call ran; call it again if needed"
+
 
 def rebuild_history(store: StateStore, run_id: str) -> list[Message]:
     run = store.get_run(run_id)
@@ -25,6 +27,7 @@ def rebuild_history(store: StateStore, run_id: str) -> list[Message]:
         assistant = Message.model_validate_json(step["assistant_json"])
         history.append(assistant)
         step_id = int(step["id"])
+        answered: set[str] = set()
         for index, tool_row in enumerate(tools_by_step.get(step_id, [])):
             if tool_row["ok"] is None:
                 continue
@@ -35,6 +38,7 @@ def rebuild_history(store: StateStore, run_id: str) -> list[Message]:
                 if index < len(assistant.tool_calls)
                 else f"tool-{tool_row['id']}"
             )
+            answered.add(call_id)
             history.append(
                 Message(
                     role=MessageRole.TOOL,
@@ -43,4 +47,15 @@ def rebuild_history(store: StateStore, run_id: str) -> list[Message]:
                     name=tool_row["tool"],
                 ),
             )
+        # A provider rejects an assistant turn whose tool calls are not all answered.
+        for call in assistant.tool_calls:
+            if call.id not in answered:
+                history.append(
+                    Message(
+                        role=MessageRole.TOOL,
+                        content=NOT_EXECUTED_MSG,
+                        tool_call_id=call.id,
+                        name=call.name,
+                    ),
+                )
     return history
